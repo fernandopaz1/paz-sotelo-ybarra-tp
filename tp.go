@@ -58,11 +58,7 @@ func main() {
         fmt.Println("Error al crear cliente")
         log.Fatal(err)
     }
-	// _, err = db.Exec(`insert into cliente values ('1','Fenando', 'Paz', 'Callefalsa');`)
-    // if err != nil {
-	// 	fmt.Println("Error al insertar datos en cliente")
-    //     log.Fatal(err)
-    // }
+	
     tel :="111111111111"
     insertarClientes(db,1,"Fernando","Paz","Calle falsa",tel)
 
