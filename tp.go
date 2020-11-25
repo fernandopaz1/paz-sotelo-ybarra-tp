@@ -34,15 +34,11 @@ type cliente struct {
     //telefono [12] rune
 }
 
-func insertarClientes(nroCliente int ,nombre string, apellido string, domicilio string) {
-	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
-    if err != nil {
-        fmt.Println("Error al abir la base de datos ya creada")
-        log.Fatal(err)
-    }
-    defer db.Close()
-	salida := fmt.Sprintf(`insert into cliente values ('%v','%v','%v','%v');`,nroCliente,nombre,apellido,domicilio)
-	_, err = db.Exec(salida)
+
+func insertarClientes(db *sql.DB, nroCliente int ,nombre string, apellido string, domicilio string,tel string){
+	comandoSQL := fmt.Sprintf(`insert into cliente values ('%v','%v','%v','%v','%v');`,nroCliente,nombre,apellido,domicilio,stringtoSQLArray(tel))
+    var err error
+    _, err = db.Exec(comandoSQL)
     if err != nil {
         log.Fatal(err)
     }
@@ -55,18 +51,30 @@ func main() {
         fmt.Println("Error al abir la base de datos ya creada")
         log.Fatal(err)
     }
+    defer db.Close()
 
-    _, err = db.Exec(`create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text)`)
+    _, err = db.Exec(`create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[])`)
     if err != nil {
         fmt.Println("Error al crear cliente")
         log.Fatal(err)
     }
-	_, err = db.Exec(`insert into cliente values ('1','Fenando', 'Paz', 'Callefalsa');`)
-    if err != nil {
-		fmt.Println("Error al insertar datos en cliente")
-        log.Fatal(err)
-    }
-	db.Close()
-	insertarClientes(2,"Nacho","Sotelo","Callemasfalsa")
+	// _, err = db.Exec(`insert into cliente values ('1','Fenando', 'Paz', 'Callefalsa');`)
+    // if err != nil {
+	// 	fmt.Println("Error al insertar datos en cliente")
+    //     log.Fatal(err)
+    // }
+    tel :="111111111111"
+    insertarClientes(db,1,"Fernando","Paz","Calle falsa",tel)
 
+    insertarClientes(db,2,"Nacho","Sotelo","Callemasfalsa",tel)
+
+}
+
+func stringtoSQLArray(s string) string{
+    nuevo :=`{`
+    for i:=0; i<len(s)-1; i++ {
+        nuevo += `"`+string(s[i])+`",`
+    }
+    nuevo+= `"`+string(s[len(s)-1])+`"}`
+    return nuevo
 }
