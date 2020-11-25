@@ -3,7 +3,7 @@ package main
 import (
     "database/sql"
     "fmt"
-    "github.com/lib/pq"
+    _ "github.com/lib/pq"
     "log"
 )
 
@@ -11,18 +11,24 @@ func createDatabase() {
     db,err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
     if err != nil {
         log.Fatal(err)
+        fmt.Println("Error al abir la base de datos")
     }
     defer db.Close()
 
-    _ , err = db.Exec(`drop database if exist transacciones`)
+    _ , err = db.Exec(`drop database if exists transacciones;`)
     if err != nil {
         log.Fatal(err)
+        fmt.Println("Error al eliminar la base si ya existia")
     }
 
     _, err = db.Exec(`create database transacciones;`)
     if err != nil {
         log.Fatal(err)
+        fmt.Println("Error al crear la base transacciones")
     }
+
+
+    
 }
 
 type cliente struct {
@@ -31,25 +37,32 @@ type cliente struct {
     telefono [12] rune
 }
 
-func insertarClientes(db sql.DB ,nroCliente int ,nombre string, apellido string, domicilio string, telefono []rune) {
-    _, err = db.Exec(`insert into cliente values (`+nroCliente+`, `+nombre+`,`+apellido+`,`+domicilio+`,`+telefono+`);`)
-    if err != nil {
-        log.Fatal(err)
-    }
-}
+// func insertarClientes(db *sql.DB ,nroCliente int ,nombre string, apellido string, domicilio string, telefono []rune) {
+//     _, err = db.Exec(`insert into cliente values (`+nroCliente+`, `+nombre+`,`+apellido+`,`+domicilio+`,`+telefono+`);`)
+//     if err != nil {
+//         log.Fatal(err)
+//     }
+// }
 
 func main() {
     createDatabase()
     db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
     if err != nil {
+        fmt.Println("Error al abir la base de datos ya creada")
         log.Fatal(err)
-    }
-
-    _, err = db.Exec(`create table cliente (nroCliente int ,nombre text, apellido  text, domicilio textg, telefono char[])`)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    insertarClientes(db,1 , "Fenando", "Paz", "domicilio string", {"1","1","1","1","1","1","1","1","1","1","1","1"})  
+    } 
     defer db.Close()
+
+    _, err = db.Exec(`create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[])`)
+    if err != nil {
+        fmt.Println("Error al crear cliente")
+        log.Fatal(err)
+    }
+    
+    // tel := [12]rune{'1','1','1','1','1','1','1','1','1','1','1','1'}
+    _, err = db.Exec(`insert into cliente values ('1','Fenando', 'Paz', 'Callefalsa', '{"1","1","1","1","1","1","1","1","1","1","1","1"}');`)
+    if err != nil {
+        fmt.Println("Error al insertar datos en cliente")
+        log.Fatal(err)
+    }
 }
