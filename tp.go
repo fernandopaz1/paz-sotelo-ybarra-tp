@@ -41,11 +41,11 @@ func insertarClientes(nroCliente int ,nombre string, apellido string, domicilio 
         log.Fatal(err)
     }
     defer db.Close()
-	salida := fmt.Sprintf("insert into cliente values (%v,%v,%v,%v);",nroCliente,nombre,apellido,domicilio)
+	salida := fmt.Sprintf(`insert into cliente values ('%v','%v','%v','%v');`,nroCliente,nombre,apellido,domicilio)
 	_, err = db.Exec(salida)
-     if err != nil {
-         log.Fatal(err)
-     }
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 
 func main() {
@@ -63,9 +63,10 @@ func main() {
     }
 	_, err = db.Exec(`insert into cliente values ('1','Fenando', 'Paz', 'Callefalsa');`)
     if err != nil {
-        fmt.Println("Error al insertar datos en cliente")
+		fmt.Println("Error al insertar datos en cliente")
         log.Fatal(err)
     }
 	db.Close()
-	insertarClientes(2,'Nacho','Sotelo','Callemasfalsa')
+	insertarClientes(2,"Nacho","Sotelo","Callemasfalsa")
+
 }
