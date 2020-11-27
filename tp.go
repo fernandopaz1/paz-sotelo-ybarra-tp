@@ -111,35 +111,28 @@ func main() {
         log.Fatal(err)
     }
     defer db.Close()
+    
+    tabla := `create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
+			create table comercio (nroComercio int ,nombre text, domicilio text, codPostal text, telefono char[]);
+			create table tarjeta (numeroTarjeta char[] ,nroCliente int, valDesde char[], valHasta char[], codigoSeguridad char[], limiteCompra float, estado char[]);
+			create table compra (nroOperacion int ,nroTarjeta char[], nroComercio int, fecha date, monto float, pagado boolean);
+			create table rechazo (nroRechazo int, nroTarjeta char[], nroComercio int, fecha date, monto float, motivo text);
+			create table cierre (año int, mes int, teminacion int, fechaInicio date, fechaCierre date, fechaVto date);
+			create table cabecera (nroResumen int, nombre text, apellido text, dommicilio text, nroTarjeta char[], desde date, hasta date, vence date, total float);
+			create table detalle (nroResumen int, nroLinea int, fecha date, nombreComercio text, monto float);
+			create table alerta (nroAlerta int, nroTarjeta char[], fecha date, nroRechazo int, codAlerta int, descripcion text)`
 
-    _, err = db.Exec(`create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[])`)
+    _, err = db.Exec(tabla)
     if err != nil {
-        fmt.Println("Error al crear cliente")
-        log.Fatal(err)
-    }
-    
-    _, err = db.Exec(`create table comercio (nroComercio int ,nombre text, domicilio text, codPostal text, telefono char[])`)
-    if err != nil {
-        fmt.Println("Error al crear comercio")
-        log.Fatal(err)
-    }
-    
-    _, err = db.Exec(`create table tarjeta (numeroTarjeta char[] ,nroCliente int, valDesde char[], valHasta char[], codigoSeguridad char[], limiteCompra float, estado char[])`)
-    if err != nil {
-        fmt.Println("Error al crear tarjeta")
-        log.Fatal(err)
-    }
-    _, err = db.Exec(`create table compra (nroOperacion int ,nroTarjeta char[], nroComercio int, fecha date, monto float, pagado boolean)`)
-    if err != nil {
-        fmt.Println("Error al crear compra")
+        fmt.Println("Error al crear tabla")
         log.Fatal(err)
     }
 
     tel :="111111111111"
-    telComercio := "222222222222"
-    layout := "2006-01-02"
-    updatedAt, _ := time.Parse(layout, "2016-06-10") // lee un string y lo transforma a formato fecha
-    fechita :=updatedAt.Format("2006-01-02") // acorta la fecha sin min y zona horaria 
+    //telComercio := "222222222222"
+    //layout := "2006-01-02"
+    //updatedAt, _ := time.Parse(layout, "2016-06-10") // lee un string y lo transforma a formato fecha
+    //fechita :=updatedAt.Format("2006-01-02") // acorta la fecha sin min y zona horaria 
     
     //var limCompra float64 
     //limCompra = 30000.50
@@ -155,11 +148,11 @@ func main() {
     insertarClientes(db,5,"Verónica","Roldán","Callemasfalsa",tel)
     
     
-    insertarComercio(db,1,"Rey del pancho","Pte Peron 222","1613",telComercio)
+    //insertarComercio(db,1,"Rey del pancho","Pte Peron 222","1613",telComercio)
     
-    insertarTarjeta(db,"1234567891011123",1,"202005","202205","1234",30000.50,"suspendida")
+    //insertarTarjeta(db,"1234567891011123",1,"202005","202205","1234",30000.50,"suspendida")
     
-    insertarCompra(db,1,"1234567891011123",3156,fechita,122.2,true)
+    //insertarCompra(db,1,"1234567891011123",3156,fechita,122.2,true)
     
     
 }
