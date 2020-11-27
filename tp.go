@@ -138,9 +138,45 @@ func cargarDatos() {
         fmt.Println("Error al cargar las tarjetas")
         log.Fatal(err)
     }
+    
+    compras := `insert into compra values ('0','{"1","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t')`
+    _, err = db.Exec(compras)
+	if err != nil {
+        fmt.Println("Error al cargar la compra")
+        log.Fatal(err)
+    }
+    
+    
 }
-	
+
+
 func main (){
 	cargarDatos()
+	
+	fmt.Println ("hola ")
+	
+	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
+    if err != nil {
+        fmt.Println("Error al abrir la base de datos ya creada")
+        log.Fatal(err)
+    }
+    defer db.Close()
+    _, err = db.Exec(`create or replace function autorizacion_De_Compra() returns trigger as $$ begin if new.nroTarjeta != old.nroTarjeta then insert into compra values (new); end if; return new; end; $$ language plpgsql;`)
+    if err != nil {
+        fmt.Println("Error al cargar triggers")
+        log.Fatal(err)
+    }
+	_, err = db.Exec(`create trigger autorizacionCompra_trg before insert on compra for each row execute procedure autorizacion_De_Compra();`)
+	if err != nil {
+        fmt.Println("Error al cargar triggers")
+        log.Fatal(err)
+    }
+    
+    compras2 := `insert into compra values ('1','{"1","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t')`
+	_, err = db.Exec(compras2)
+	if err != nil {
+        fmt.Println("Error al cargar la compra")
+        log.Fatal(err)
+    }
 }  
 
