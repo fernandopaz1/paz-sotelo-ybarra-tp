@@ -166,18 +166,43 @@ func main (){
     }
     defer db.Close()
     
-    _, err = db.Exec(`create function print() returns void as $$ begin raise notice 'Se ejecuto el trigger'; end; $$ language plpgsql;`)
+    funcPrintEnSQL :=
+    `create function print() returns void as $$
+    begin 
+        raise notice 'Se ejecuto el trigger';
+    end; 
+    $$ language plpgsql;` 
+
+    _, err = db.Exec(funcPrintEnSQL)
     if err != nil {
         fmt.Println("Error al cargar triggers")
         log.Fatal(err)
     }    
 
-    _, err = db.Exec(`create or replace function autorizacion_De_Compra() returns trigger as $$ begin if new.nroTarjeta != old.nroTarjeta then insert into compra values (new.nroOperacion ,new.nroTarjeta, new.nroComercio, new.fecha, new.monto, new.pagado); select print();end if; return new; end; $$ language plpgsql;`)
+    autDeCompraFunc := 
+    `create or replace function autorizacion_De_Compra()  returns trigger as $$ 
+        begin 
+            if new.nroTarjeta != old.nroTarjeta then
+                insert into compra values (new.nroOperacion ,new.nroTarjeta, new.nroComercio, new.fecha, new.monto, new.pagado);
+                select print();
+            end if;
+            return new;
+        end; 
+    $$ language plpgsql;`
+
+    _, err = db.Exec(autDeCompraFunc)
     if err != nil {
         fmt.Println("Error al cargar triggers")
         log.Fatal(err)
     }
-	_, err = db.Exec(`create trigger autorizacionCompra_trg before insert or update on compra for each row execute procedure autorizacion_De_Compra();`)
+
+    autDeCompraTrigg :=
+    `create trigger autorizacionCompra_trg
+    before insert or update on compra
+    for each row
+    execute procedure autorizacion_De_Compra();`
+
+	_, err = db.Exec(autDeCompraTrigg)
 	if err != nil {
         fmt.Println("Error al cargar triggers")
         log.Fatal(err)
