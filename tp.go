@@ -171,11 +171,10 @@ func cargarDatos() {
 
 
 func main (){
-    menu()
+    //menu()
 
 	cargarDatos()
 	
-	fmt.Println ("hola ")
 	
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
     if err != nil {
@@ -236,7 +235,7 @@ func main (){
 
 
 func menu(){
-    fmt.Print("\033[H\033[2J")
+    fmt.Print("\033[H\033[2J") //Limpia la terminal
 
     fmt.Println(`Introduzca la opcion elegida :
                 1. Para crear la base de datos 
@@ -259,10 +258,10 @@ func menu(){
         fmt.Println("cargando la base")
         break
         case '3':
-        fmt.Println("verifica stored procedures")
+        fmt.Println("verificando stored procedures")
         break
-        case '5':
-        fmt.Println("Cargar en NoSQL")
+        case '4':
+        fmt.Println("Cargando en NoSQL")
         break
         case 'q':
         fmt.Println("Chau")
