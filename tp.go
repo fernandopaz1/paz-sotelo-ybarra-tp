@@ -197,10 +197,11 @@ func main (){
     }    
 
     autDeCompraFunc := 
-    `create or replace function autorizacion_De_Compra()  returns trigger as $$ 
+    `create or replace function autorizacion_De_Compra()  returns trigger as $$
         begin 
-            if new.nroTarjeta != old.nroTarjeta then
-                insert into compra values (new.nroOperacion ,new.nroTarjeta, new.nroComercio, new.fecha, new.monto, new.pagado);
+            perform * from compra  where new.nroTarjeta = old.nroTarjeta;
+            if found then
+				delete from compra where nroOperacion = new.nroOperacion;
                 select print();
             end if;
             return new;
@@ -215,8 +216,7 @@ func main (){
 
     autDeCompraTrigg :=
     `create trigger autorizacionCompra_trg
-    before insert or update on compra
-    for each row
+    after insert on compra
     execute procedure autorizacion_De_Compra();`
 
 	_, err = db.Exec(autDeCompraTrigg)
