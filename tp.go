@@ -6,6 +6,8 @@ import (
     _ "github.com/lib/pq"
     "log"
     "time"
+    "bufio"
+    "os"
 )
 
 func createDatabase() {
@@ -114,7 +116,7 @@ func cargarDatos() {
         fmt.Println("Error al cargar las fk")
         log.Fatal(err)
     }		
-    		
+
     datosClientes := `insert into cliente values ('1','Fernando','Paz','callao 345','{"1","1","3","4","5","6","8","7","6","5"}');
 						insert into cliente values ('2','Fer','Paz','calla 345','{"1","1","3","4","5","6","8","7","6","5"}')`
     
@@ -132,7 +134,7 @@ func cargarDatos() {
         log.Fatal(err)
     }
     datosTarjetas := `insert into tarjeta values ('{"1","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','2','{"5","6","8","7","6","5"}','{"5","6","8","7","6","4"}','{"9","6","8","7"}','121212.12','{"v","i","g","e","n","t","e"}')`
-   
+
 	_, err = db.Exec(datosTarjetas)
 	if err != nil {
         fmt.Println("Error al cargar las tarjetas")
@@ -151,6 +153,8 @@ func cargarDatos() {
 
 
 func main (){
+    menu()
+
 	cargarDatos()
 	
 	fmt.Println ("hola ")
@@ -161,12 +165,19 @@ func main (){
         log.Fatal(err)
     }
     defer db.Close()
-    _, err = db.Exec(`create or replace function autorizacion_De_Compra() returns trigger as $$ begin if new.nroTarjeta != old.nroTarjeta then insert into compra values (new); end if; return new; end; $$ language plpgsql;`)
+    
+    _, err = db.Exec(`create function print() returns void as $$ begin raise notice 'Se ejecuto el trigger'; end; $$ language plpgsql;`)
+    if err != nil {
+        fmt.Println("Error al cargar triggers")
+        log.Fatal(err)
+    }    
+
+    _, err = db.Exec(`create or replace function autorizacion_De_Compra() returns trigger as $$ begin if new.nroTarjeta != old.nroTarjeta then insert into compra values (new.nroOperacion ,new.nroTarjeta, new.nroComercio, new.fecha, new.monto, new.pagado); select print();end if; return new; end; $$ language plpgsql;`)
     if err != nil {
         fmt.Println("Error al cargar triggers")
         log.Fatal(err)
     }
-	_, err = db.Exec(`create trigger autorizacionCompra_trg before insert on compra for each row execute procedure autorizacion_De_Compra();`)
+	_, err = db.Exec(`create trigger autorizacionCompra_trg before insert or update on compra for each row execute procedure autorizacion_De_Compra();`)
 	if err != nil {
         fmt.Println("Error al cargar triggers")
         log.Fatal(err)
@@ -180,3 +191,42 @@ func main (){
     }
 }  
 
+
+func menu(){
+    fmt.Print("\033[H\033[2J")
+
+    fmt.Println(`Introduzca la opcion elegida :
+                1. Para crear la base de datos 
+                2. Para cargar la tabla 
+                3. Para verificar los stored procedures
+                4. Carga los mismos datos en NoSQL
+                q. Salir`) 
+    reader := bufio.NewReader(os.Stdin)
+    char, _, err := reader.ReadRune()
+
+    if err != nil {
+    fmt.Println(err)
+    }
+
+    switch char {
+        case '1':
+        fmt.Println("Creando")
+        break
+        case '2':
+        fmt.Println("cargando la base")
+        break
+        case '3':
+        fmt.Println("verifica stored procedures")
+        break
+        case '5':
+        fmt.Println("Cargar en NoSQL")
+        break
+        case 'q':
+        fmt.Println("Chau")
+        break
+        default:
+        fmt.Println("La opcion elegida no es valida")
+        time.Sleep(2 * time.Second)
+        menu()
+    }
+}
