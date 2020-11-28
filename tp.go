@@ -184,9 +184,9 @@ func main (){
     defer db.Close()
     
     funcPrintEnSQL :=
-    `create function print() returns void as $$
+    `create function print(pk int) returns void as $$
     begin 
-        raise notice 'Se ejecuto el trigger';
+        raise notice 'Se ejecuto el trigger con pk % ', pk;
     end; 
     $$ language plpgsql;` 
 
@@ -198,11 +198,12 @@ func main (){
 
     autDeCompraFunc := 
     `create or replace function autorizacion_De_Compra()  returns trigger as $$
-        begin 
-            perform * from compra  where new.nroTarjeta = old.nroTarjeta;
-            if found then
-				delete from compra where nroOperacion = new.nroOperacion;
-                select print();
+        begin
+            if exists(select * from compra where nroTarjeta = new.nroTarjeta) then
+                delete from compra where nroOperacion = new.nroOperacion;
+                raise notice 'Se rechazo la compra con pk  % por tener una tarjeta repetida', new.nroOperacion;
+            else
+                raise notice 'Se ejetuto la rama negativa del if';
             end if;
             return new;
         end; 
@@ -217,6 +218,7 @@ func main (){
     autDeCompraTrigg :=
     `create trigger autorizacionCompra_trg
     after insert on compra
+    for each row
     execute procedure autorizacion_De_Compra();`
 
 	_, err = db.Exec(autDeCompraTrigg)
@@ -225,7 +227,7 @@ func main (){
         log.Fatal(err)
     }
     
-    compras2 := `insert into compra values ('1','{"1","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t')`
+    compras2 := `insert into compra values ('2','{"1","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t')`
 	_, err = db.Exec(compras2)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
