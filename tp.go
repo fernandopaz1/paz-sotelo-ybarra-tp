@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+	"io/ioutil"
     "database/sql"
     "fmt"
     _ "github.com/lib/pq"
@@ -82,38 +84,6 @@ func cargarDatos() {
     _, err = db.Exec(tabla)
     if err != nil {
         fmt.Println("Error al crear las tablas")
-        log.Fatal(err)
-    }
-    
-    pk := `alter table cliente add constraint cliente_pk primary key (nroCliente);
-			alter table comercio add constraint comercio_pk primary key (nroComercio);
-			alter table tarjeta add constraint tarjeta_pk primary key (nroTarjeta);
-			alter table compra add constraint compra_pk primary key (nroOperacion);
-			alter table rechazo add constraint rechazo_pk primary key (nroRechazo);
-			alter table cierre add constraint cierre_pk primary key (año,mes,terminacion);
-			alter table cabecera add constraint cabecera_pk primary key (nroResumen);
-			alter table detalle add constraint detalle_pk primary key (nroResumen,nroLinea);
-			alter table alerta add constraint alerta_pk primary key (nroAlerta)`
-			
-	_, err = db.Exec(pk)
-    if err != nil {
-        fmt.Println("Error al cargar las pk")
-        log.Fatal(err)
-    }		
-    
-    fk := `alter table tarjeta add constraint tarjeta_fk foreign key (nroCliente) references cliente (nroCliente);
-			alter table compra add constraint compra_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
-			alter table compra add constraint compra_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
-			alter table compra add constraint rechazo_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
-			alter table compra add constraint rechazo_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
-			alter table cabecera add constraint cabecera_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
-			alter table detalle add constraint detalle_fk foreign key (nroResumen) references cabecera (nroResumen);
-			alter table alerta add constraint alerta_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
-			alter table alerta add constraint alerta_nroRechazo_fk foreign key (nroRechazo) references rechazo (nroRechazo)`
-	
-	_, err = db.Exec(fk)
-    if err != nil {
-        fmt.Println("Error al cargar las fk")
         log.Fatal(err)
     }		
 
@@ -214,7 +184,7 @@ func main (){
     //menu()
 
 	cargarDatos()
-	
+	//cargarPkYFK();
 	
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
     if err != nil {
@@ -239,12 +209,15 @@ func main (){
     autDeCompraFunc := 
     `create or replace function autorizacion_De_Compra()  returns trigger as $$
         begin
-            if exists(select * from compra where nroTarjeta = new.nroTarjeta) then
+            if not exists(select * from tarjeta t where nroTarjeta = new.nroTarjeta and t.estado = '{"v","i","g","e","n","t","e"}') then
                 delete from compra where nroOperacion = new.nroOperacion;
+                insert into rechazo values (new.nroOperacion, new.nroTarjeta, new.nroComercio, new.fecha, new.monto, 'tarjeta no
+válida ó no vigente');
                 raise notice 'Se rechazo la compra con pk  % por tener una tarjeta repetida', new.nroOperacion;
-            else
-                raise notice 'Se ejetuto la rama negativa del if';
             end if;
+            
+            
+            
             return new;
         end; 
     $$ language plpgsql;`
@@ -267,12 +240,14 @@ func main (){
         log.Fatal(err)
     }
     
-    compras2 := `insert into compra values ('2','{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','2','2020-11-27','150.50','t')`
+    compras2 := `insert into compra values ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','2020-11-27','150.50','t')`
 	_, err = db.Exec(compras2)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
         log.Fatal(err)
     }
+
+    fmt.Print("Corre despues")
 }  
 
 
@@ -312,5 +287,46 @@ func menu(){
         fmt.Println("La opcion elegida no es valida")
         time.Sleep(2 * time.Second)
         menu()
+    }
+}
+
+func cargarPkYFK(){
+    db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
+    if err != nil {
+        fmt.Println("Error al abrir la base de datos ya creada")
+        log.Fatal(err)
+    }
+    defer db.Close()
+    
+    pk := `alter table cliente add constraint cliente_pk primary key (nroCliente);
+			alter table comercio add constraint comercio_pk primary key (nroComercio);
+			alter table tarjeta add constraint tarjeta_pk primary key (nroTarjeta);
+			alter table compra add constraint compra_pk primary key (nroOperacion);
+			alter table rechazo add constraint rechazo_pk primary key (nroRechazo);
+			alter table cierre add constraint cierre_pk primary key (año,mes,terminacion);
+			alter table cabecera add constraint cabecera_pk primary key (nroResumen);
+			alter table detalle add constraint detalle_pk primary key (nroResumen,nroLinea);
+			alter table alerta add constraint alerta_pk primary key (nroAlerta)`
+			
+	_, err = db.Exec(pk)
+    if err != nil {
+        fmt.Println("Error al cargar las pk")
+        log.Fatal(err)
+    }		
+    
+    fk := `alter table tarjeta add constraint tarjeta_fk foreign key (nroCliente) references cliente (nroCliente);
+			alter table compra add constraint compra_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+			alter table compra add constraint compra_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
+			alter table compra add constraint rechazo_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+			alter table compra add constraint rechazo_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
+			alter table cabecera add constraint cabecera_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+			alter table detalle add constraint detalle_fk foreign key (nroResumen) references cabecera (nroResumen);
+			alter table alerta add constraint alerta_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+			alter table alerta add constraint alerta_nroRechazo_fk foreign key (nroRechazo) references rechazo (nroRechazo)`
+	
+	_, err = db.Exec(fk)
+    if err != nil {
+        fmt.Println("Error al cargar las fk")
+        log.Fatal(err)
     }
 }
