@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-	"io/ioutil"
     "database/sql"
     "fmt"
     _ "github.com/lib/pq"
@@ -161,21 +159,14 @@ func cargarDatos() {
 						insert into tarjeta values ('{"4","2","3","4","5","6","7","7","7","5","5","9","8","9","6","3"}','19','{"2","0","1","5","0","7"}','{"2","0","2","5","0","7"}','{"2","6","6","7"}','60000.00','{"v","i","g","e","n","t","e"}');
 						insert into tarjeta values ('{"4","5","3","4","5","6","8","5","4","5","5","6","8","1","1","1"}','20','{"2","0","1","2","0","6"}','{"2","0","2","2","0","7"}','{"3","7","8","5"}','50000.00','{"v","i","g","e","n","t","e"}');
 						insert into tarjeta values ('{"4","5","0","4","5","6","8","3","3","5","5","6","0","7","6","0"}','19','{"2","0","0","8","0","6"}','{"2","0","1","4","0","6"}','{"4","7","6","6"}','40000.00','{"a","n","u","l","a","d","a"}');
-						insert into tarjeta values ('{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','{"2","0","0","9","0","6"}','{"2","0","1","5","0","6"}','{"5","6","8","7"}','40000.00','{"a","n","u","l","a","d","a"}')`
+                        insert into tarjeta values ('{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','{"2","0","0","9","0","6"}','{"2","0","1","5","0","6"}','{"5","6","8","7"}','40000.00','{"a","n","u","l","a","d","a"}');
+                        insert into tarjeta values ('{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','{"2","0","0","9","0","6"}','{"2","0","1","5","0","6"}','{"5","6","8","8"}','40000.00','{"s","u","s","p","e","n","d","i","d","a"}')`
 
 	_, err = db.Exec(datosTarjetas)
 	if err != nil {
         fmt.Println("Error al cargar las tarjetas")
         log.Fatal(err)
     }
-    
-    compras := `insert into compra values ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t')`
-    _, err = db.Exec(compras)
-	if err != nil {
-        fmt.Println("Error al cargar la compra")
-        log.Fatal(err)
-    }
-    
     
 }
 
@@ -207,47 +198,40 @@ func main (){
     }    
 
     autDeCompraFunc := 
-    `create or replace function autorizacion_De_Compra()  returns trigger as $$
-        begin
-            if not exists(select * from tarjeta t where nroTarjeta = new.nroTarjeta and t.estado = '{"v","i","g","e","n","t","e"}') then
-                delete from compra where nroOperacion = new.nroOperacion;
-                insert into rechazo values (new.nroOperacion, new.nroTarjeta, new.nroComercio, new.fecha, new.monto, 'tarjeta no
-válida ó no vigente');
-                raise notice 'Se rechazo la compra con pk  % por tener una tarjeta repetida', new.nroOperacion;
-            end if;
-            
-            
-            
-            return new;
+    `create or replace function 
+        autorizacion_de_compra(nroOperacion int ,nroTarj char[], nroComercio int, fecha date, monto float, pagado boolean)  
+        returns boolean as $$
+            declare
+                aceptado boolean = true;
+            begin
+                if not exists(
+                    select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"v","i","g","e","n","t","e"}') then
+                    insert into rechazo values (
+                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'tarjeta no válida ó no vigente');
+                    aceptado = false;
+                end if;
+
+                if aceptado then
+                        insert into compra values (nroOperacion ,nroTarj, nroComercio , fecha, monto , pagado);
+                end if;
+
+            return aceptado;
         end; 
     $$ language plpgsql;`
 
     _, err = db.Exec(autDeCompraFunc)
     if err != nil {
-        fmt.Println("Error al cargar triggers")
+        fmt.Println("Error al cargar funcion de autenticacion de compra")
         log.Fatal(err)
     }
 
-    autDeCompraTrigg :=
-    `create trigger autorizacionCompra_trg
-    after insert on compra
-    for each row
-    execute procedure autorizacion_De_Compra();`
-
-	_, err = db.Exec(autDeCompraTrigg)
-	if err != nil {
-        fmt.Println("Error al cargar triggers")
-        log.Fatal(err)
-    }
-    
-    compras2 := `insert into compra values ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','2020-11-27','150.50','t')`
-	_, err = db.Exec(compras2)
+    compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t');
+                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t')`
+    _, err = db.Exec(compras)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
         log.Fatal(err)
     }
-
-    fmt.Print("Corre despues")
 }  
 
 
