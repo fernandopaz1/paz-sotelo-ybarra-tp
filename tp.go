@@ -262,6 +262,26 @@ func main (){
         log.Fatal(err)
     }
 
+
+    generacionDeResumen := 
+    `create or replace function 
+        generacion_de_resumen(nroClient int ,periodo date[])  
+        returns void as $$
+            declare
+                client record;
+            begin
+                select * into client from cliente where nroCliente = nroClient;
+                raise notice 'hola %', client.nombre;            
+            end; 
+    $$ language plpgsql;`
+
+    _, err = db.Exec(generacionDeResumen)
+	if err != nil {
+        fmt.Println("Error al cargar la funcion generacion de resumen")
+        log.Fatal(err)
+    }
+
+
     compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t');
                 select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t');
                 select autorizacion_de_compra ('3','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','3','2020-11-27','150000.50','t');
@@ -269,6 +289,14 @@ func main (){
     _, err = db.Exec(compras)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
+        log.Fatal(err)
+    }
+
+
+    resumen := `select generacion_de_resumen ('1','{"2020-10-27","2020-12-27"}');`
+    _, err = db.Exec(resumen)
+	if err != nil {
+        fmt.Println("Error al cargar el resumen")
         log.Fatal(err)
     }
 }  
