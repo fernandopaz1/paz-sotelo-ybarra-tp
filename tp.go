@@ -211,6 +211,43 @@ func main (){
                     aceptado = false;
                 end if;
 
+                -- pensar bien que estamos chequeando en este
+                raise notice 'Falta ver bien que hay que pedir con el codigo de seguridad';
+                if exists(
+                    select * from tarjeta t1
+                        where exists (select * from tarjeta t2
+                                    where t1.nroTarjeta != nroTarj and 
+                                        t2.nroTarjeta = nroTarj and
+                                        t2.codigoSeguridad = t1.codigoSeguridad)) then
+                    insert into rechazo values (
+                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
+                    aceptado = false;
+                end if;
+
+                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.limiteCompra < monto ) then
+                    insert into rechazo values (
+                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'supera límite de tarjeta');
+                    aceptado = false;
+                end if;
+
+                /* Esto esta comentado porque todavia hayq que solucionar el que podamos comparar
+                t.valHasta con now() (array de chars vs timestamp)
+                raise notice 'cuarto';
+                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.valHasta > now() ) then
+                    insert into rechazo values (
+                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
+                    aceptado = false;
+                end if;
+                */
+
+                raise notice 'quinto';
+                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
+                    insert into rechazo values (
+                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
+                    aceptado = false;
+                end if;
+
+
                 if aceptado then
                         insert into compra values (nroOperacion ,nroTarj, nroComercio , fecha, monto , pagado);
                 end if;
@@ -226,7 +263,9 @@ func main (){
     }
 
     compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t');
-                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t')`
+                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t');
+                select autorizacion_de_compra ('3','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','3','2020-11-27','150000.50','t');
+                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t')`
     _, err = db.Exec(compras)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
