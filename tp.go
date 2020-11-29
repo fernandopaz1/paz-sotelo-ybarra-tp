@@ -144,7 +144,26 @@ func cargarDatos() {
         log.Fatal(err)
     }
     
-    datosComercios := `insert into comercio values ('1','Rey del pancho','Pte peron 3221','1613','{"2","2","3","4","5","6","8","7","6","5"}')`
+    datosComercios := `insert into comercio values ('1','Adidas','Pte peron 3221','1643','{"1","1","4","9","2","1","1","9","7","1"}');
+						insert into comercio values ('2','Nike','Miraflores','1643','{"1","1","4","4","5","1","8","7","6","5"}');
+						insert into comercio values ('3','Mc Donals','French 231','1643','{"1","1","4","4","1","1","0","9","6","5"}');
+						insert into comercio values ('4','Burger King','Av Almafuerte 436','1643','{"1","1","4","4","4","3","0","8","2","5"}');
+						insert into comercio values ('5','Compumundo','Guido Spano 2534','1643','{"1","1","4","4","5","5","3","2","2","3"}');
+						insert into comercio values ('6','Garbarino','Parana 3771','1642','{"1","1","4","5","5","6","3","3","6","8"}');
+						insert into comercio values ('7','Musimundo','Callao 3245','1642','{"1","1","4","3","0","2","8","7","3","5"}');
+						insert into comercio values ('8','Fravega','Falucho 5411','1642','{"1","1","4","1","3","4","8","6","3","0"}');
+						insert into comercio values ('9','Rodo','Av Corrientes','1642','{"1","1","4","4","4","2","1","7","1","8"}');
+						insert into comercio values ('10','Samsung','Callao','1642','{"1","1","4","8","3","5","1","1","6","5"}');
+						insert into comercio values ('11','Freddo','Pte peron 2121','1640','{"1","1","4","1","4","1","8","0","0","1"}');
+						insert into comercio values ('12','Mostaza','Ugarte 1212','1640','{"1","1","4","2","6","6","7","7","3","1"}');
+						insert into comercio values ('13','Green Eat','Haiti 3367','1640','{"1","1","4","4","5","6","1","7","3","5"}');
+						insert into comercio values ('14','Starbucks','Pte peron 1299','1640','{"1","1","4","4","5","2","2","5","6","3"}');
+						insert into comercio values ('15','Wendy','Palpa 782','1640','{"1","1","4","3","5","6","7","7","6","9"}');
+						insert into comercio values ('16','Bowen','Zelarrayan 485','1638','{"1","1","4","4","5","6","4","2","1","6"}');
+						insert into comercio values ('17','Cristobal Colon','Baigorria 1513','1638','{"1","1","4","2","5","6","2","7","1","5"}');
+						insert into comercio values ('18','Falabella','Pte peron 1576','1638','{"1","1","4","4","5","2","8","7","6","5"}');
+						insert into comercio values ('19','Carrefour','Ugarte 3221','1638','{"1","1","4","4","1","8","6","1","3","5"}');
+						insert into comercio values ('20','Etiqueta','Nazca 2356','1638','{"1","1","4","2","5","6","8","1","1","2"}')`
     
     _, err = db.Exec(datosComercios)
     if err != nil {
