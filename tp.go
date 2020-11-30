@@ -78,7 +78,7 @@ func cargarDatos() {
     tabla := `create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
 			create table comercio (nroComercio int ,nombre text, domicilio text, codPostal text, telefono char[]);
 			create table tarjeta (nroTarjeta char[] ,nroCliente int, valDesde char[], valHasta char[], codigoSeguridad char[], limiteCompra float, estado char[]);
-			create table compra (nroOperacion int ,nroTarjeta char[], nroComercio int, fecha date, monto float, pagado boolean);
+			create table compra (nroOperacion int ,nroTarjeta char[], nroComercio int, fecha timestamp, monto float, pagado boolean);
 			create table rechazo (nroRechazo int, nroTarjeta char[], nroComercio int, fecha date, monto float, motivo text);
 			create table cierre (año int, mes int, terminacion int, fechaInicio date, fechaCierre date, fechaVto date);
 			create table cabecera (nroResumen int, nombre text, apellido text, dommicilio text, nroTarjeta char[], desde date, hasta date, vence date, total float);
@@ -203,14 +203,38 @@ func main (){
         log.Fatal(err)
     }    
 
+    arrayDeCharADate := `create or replace function 
+        array_de_char_a_date(venc char[])  
+        returns date as $$
+            declare
+                anio int;
+                mes  int;
+                result record;
+            begin
+                anio = venc[1]::int * 1000 + venc[2]::int * 100 + venc[3]::int * 10 +venc[4]::int;
+                mes = venc[5]::int * 10 + venc[6]::int;
+                select into result format('%s-%s-%s', anio, mes, 1)::date;
+
+                raise notice 'Esta es la fecha que le paso % ', result;
+                return result;
+            end;
+    $$ language plpgsql;`
+
+    _, err = db.Exec(arrayDeCharADate)
+	if err != nil {
+        fmt.Println("Error al cargar la funcion generacion de resumen")
+        log.Fatal(err)
+    }
+
     autDeCompraFunc := 
     `create or replace function 
         autorizacion_de_compra(nroOperacion int ,nroTarj char[], nroComercio int, fecha date, monto float, pagado boolean)  
         returns boolean as $$
             declare
                 aceptado boolean = true;
+                f_validez  char[];
+                f_vencimiento date;
             begin
-                
                 if not exists(
                     select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"v","i","g","e","n","t","e"}') then
                     insert into rechazo values (
@@ -222,13 +246,14 @@ func main (){
                 
                 if not exists(
                     select * from tarjeta t,consumo c
-                        where t.nroTarjeta = nroTarj and c.codigoSeguridad = t.codigoSeguridad and nroTarj = c.nroTarjeta) then
+                        where t.nroTarjeta = nroTarj and c.codigoSeguridad = t.codigoSeguridad and nroTarj = c.nroTarjeta) and
+                        exists (select * from consumo c2 where c2.nroTarjeta = nroTarj) then
 							insert into rechazo values (
 							nroOperacion, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
                     aceptado = false;
                     return aceptado;
                 end if;
-
+                
                 if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.limiteCompra < monto ) then
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'supera límite de tarjeta');
@@ -236,16 +261,16 @@ func main (){
                     return aceptado;
                 end if;
 
+                select valHasta into f_validez from tarjeta t where t.nroTarjeta = nroTarj;
+                select into f_vencimiento array_de_char_a_date(f_validez);
                 
-                /*
-                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.valHasta > fecha ) then
+                if f_vencimiento < fecha then
                     insert into rechazo values (
                     nroOperacion, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
+                    raise notice 'corrio el if de fecha de vencimient';
                     aceptado = false;
                     return aceptado;
                 end if;
-                */
-
                 
                 if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
                     insert into rechazo values (
@@ -254,11 +279,9 @@ func main (){
                     return aceptado;
                 end if;
 
-
                 if aceptado then
                         insert into compra values (nroOperacion ,nroTarj, nroComercio , fecha, monto , pagado);
                 end if;
-
             return aceptado;
         end; 
     $$ language plpgsql;`
@@ -272,29 +295,19 @@ func main (){
 
     generacionDeResumen := 
     `create or replace function 
-        generacion_de_resumen(nroClient int ,periodo date[])  
+        generacion_de_resumen(nroClient int ,anio int, mes int)  
         returns void as $$
             declare
                 client record;
                 tarj  record;
-                fecha timestamp;
-                fechaString text = '2016-12-31 13:30:15';
-                m record;
             begin
-                select into fecha periodo[1] + '00:00:01'::time ;
-
-                raise notice 'la frcha es %', fecha;
-                --select into fecha UNIX_TIMESTAMP(periodo[1]);
-                select into m month(fecha) as month;
-                --select into m extract(month from timestamp '2016-12-31 13:30:15');
-
-                raise notice 'este es el mes %', m;
 
                 -- create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
                 select * into client from cliente c where c.nroCliente = nroClient;
                 select * into tarj from tarjeta t where t.nroCliente = nroClient and t.estado = '{"v","i","g","e","n","t","e"}';
                 raise notice 'hola %', client.nombre;
-                insert into cierre values (2020 , 11 , tarj.nroTarjeta[16]::int, periodo[1], periodo[2], periodo[2] + integer '7' );            
+                --insert into cierre values (anio , mes , tarj.nroTarjeta[16]::int, '2020-10-29','2020-11-29', periodo[2], periodo[2] + integer '7' );            
+            
             end; 
     $$ language plpgsql;`
 
@@ -311,20 +324,19 @@ func main (){
         log.Fatal(err)
     }
     
-    compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t');
-                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t');
-                select autorizacion_de_compra ('3','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','3','2020-11-27','150000.50','t');
-                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t');
-                select autorizacion_de_compra ('4','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t')`
-    _, err = db.Exec(compras)
+    compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','f');
+                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','f');
+                select autorizacion_de_compra ('3','{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','3','2020-11-27','150000.50','f');
+                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','f');
+                select autorizacion_de_compra ('4','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','f');
+                select autorizacion_de_compra ('20','{"5","5","0","4","5","6","8","7","6","2","2","6","2","2","6","5"}','5','2050-11-27','155.50','f')`
+                _, err = db.Exec(compras)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
         log.Fatal(err)
     }
 	
-	
-	
-    resumen := `select generacion_de_resumen ('1','{"2020-10-29","2020-11-29"}');`
+    resumen := `select generacion_de_resumen ('1','2020', '11');`
     _, err = db.Exec(resumen)
 	if err != nil {
         fmt.Println("Error al cargar el resumen")
@@ -337,10 +349,11 @@ func menu(){
     fmt.Print("\033[H\033[2J") //Limpia la terminal
 
     fmt.Println(`Introduzca la opcion elegida :
-                1. Para crear la base de datos 
-                2. Para cargar la tabla 
-                3. Para verificar los stored procedures
-                4. Carga los mismos datos en NoSQL
+                1. Para crear la base de datos
+                2. Para agregar las Pk y Fk 
+                3. Para cargar la tabla 
+                4. Para verificar los stored procedures
+                5. Carga los mismos datos en NoSQL
                 q. Salir`) 
     reader := bufio.NewReader(os.Stdin)
     char, _, err := reader.ReadRune()
@@ -354,12 +367,16 @@ func menu(){
         fmt.Println("Creando")
         break
         case '2':
-        fmt.Println("cargando la base")
-        break
-        case '3':
+        cargarPkYFK();
         fmt.Println("verificando stored procedures")
         break
+        case '3':
+        fmt.Println("cargando la base")
+        break
         case '4':
+        fmt.Println("verificando stored procedures")
+        break
+        case '5':
         fmt.Println("Cargando en NoSQL")
         break
         case 'q':
