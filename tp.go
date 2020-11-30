@@ -59,6 +59,12 @@ type compra struct {
     monto float64
     pagado bool
 }
+type consumo struct {
+    nroTarjeta [16] rune
+    codigoSeguridad [4] rune
+	nroComercio int 
+    monto float64
+}
 
 func cargarDatos() {
     createDatabase()
@@ -77,7 +83,8 @@ func cargarDatos() {
 			create table cierre (año int, mes int, terminacion int, fechaInicio date, fechaCierre date, fechaVto date);
 			create table cabecera (nroResumen int, nombre text, apellido text, dommicilio text, nroTarjeta char[], desde date, hasta date, vence date, total float);
 			create table detalle (nroResumen int, nroLinea int, fecha date, nombreComercio text, monto float);
-			create table alerta (nroAlerta int, nroTarjeta char[], fecha date, nroRechazo int, codAlerta int, descripcion text)`
+			create table alerta (nroAlerta int, nroTarjeta char[], fecha date, nroRechazo int, codAlerta int, descripcion text);
+			create table consumo (nroTarjeta char[], codigoSeguridad char[], nroComercio int, monto float)`
 
     _, err = db.Exec(tabla)
     if err != nil {
@@ -168,6 +175,8 @@ func cargarDatos() {
         log.Fatal(err)
     }
     
+   
+    
 }
 
 
@@ -204,6 +213,7 @@ func main (){
             declare
                 aceptado boolean = true;
             begin
+                
                 if not exists(
                     select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"v","i","g","e","n","t","e"}') then
                     insert into rechazo values (
@@ -211,17 +221,13 @@ func main (){
                     aceptado = false;
                     return aceptado;
                 end if;
-
-                -- pensar bien que estamos chequeando en este
-                raise notice 'Falta ver bien que hay que pedir con el codigo de seguridad';
-                if exists(
-                    select * from tarjeta t1
-                        where exists (select * from tarjeta t2
-                                    where t1.nroTarjeta != nroTarj and 
-                                        t2.nroTarjeta = nroTarj and
-                                        t2.codigoSeguridad = t1.codigoSeguridad)) then
-                    insert into rechazo values (
-                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
+					
+                
+                if not exists(
+                    select * from tarjeta t,consumo c
+                        where t.nroTarjeta = nroTarj and c.codigoSeguridad = t.codigoSeguridad and nroTarj = c.nroTarjeta) then
+							insert into rechazo values (
+							nroOperacion, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
                     aceptado = false;
                     return aceptado;
                 end if;
@@ -233,18 +239,17 @@ func main (){
                     return aceptado;
                 end if;
 
-                /* Esto esta comentado porque todavia hayq que solucionar el que podamos comparar
-                t.valHasta con now() (array de chars vs timestamp)
-                raise notice 'cuarto';
-                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.valHasta > now() ) then
+                
+                /*
+                if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.valHasta > fecha ) then
                     insert into rechazo values (
-                        nroOperacion, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
+                    nroOperacion, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
                     aceptado = false;
                     return aceptado;
                 end if;
                 */
 
-                raise notice 'quinto';
+                
                 if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
@@ -286,18 +291,26 @@ func main (){
         log.Fatal(err)
     }
 
-
+	consumos := `insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"1","1","1","1"}','1','150.50');`
+	_, err = db.Exec(consumos)
+	if err != nil {
+        fmt.Println("Error al cargar el consumo")
+        log.Fatal(err)
+    }
+    
     compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','t');
                 select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','t');
                 select autorizacion_de_compra ('3','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','3','2020-11-27','150000.50','t');
-                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t')`
+                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t');
+                select autorizacion_de_compra ('4','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','t')`
     _, err = db.Exec(compras)
 	if err != nil {
         fmt.Println("Error al cargar la compra")
         log.Fatal(err)
     }
-
-
+	
+	
+	
     resumen := `select generacion_de_resumen ('1','{"2020-10-27","2020-12-27"}');`
     _, err = db.Exec(resumen)
 	if err != nil {
