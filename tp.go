@@ -174,9 +174,6 @@ func cargarDatos() {
         fmt.Println("Error al cargar las tarjetas")
         log.Fatal(err)
     }
-    
-   
-    
 }
 
 
@@ -279,9 +276,25 @@ func main (){
         returns void as $$
             declare
                 client record;
+                tarj  record;
+                fecha timestamp;
+                fechaString text = '2016-12-31 13:30:15';
+                m record;
             begin
-                select * into client from cliente where nroCliente = nroClient;
-                raise notice 'hola %', client.nombre;            
+                select into fecha periodo[1] + '00:00:01'::time ;
+
+                raise notice 'la frcha es %', fecha;
+                --select into fecha UNIX_TIMESTAMP(periodo[1]);
+                select into m month(fecha) as month;
+                --select into m extract(month from timestamp '2016-12-31 13:30:15');
+
+                raise notice 'este es el mes %', m;
+
+                -- create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
+                select * into client from cliente c where c.nroCliente = nroClient;
+                select * into tarj from tarjeta t where t.nroCliente = nroClient and t.estado = '{"v","i","g","e","n","t","e"}';
+                raise notice 'hola %', client.nombre;
+                insert into cierre values (2020 , 11 , tarj.nroTarjeta[16]::int, periodo[1], periodo[2], periodo[2] + integer '7' );            
             end; 
     $$ language plpgsql;`
 
@@ -311,7 +324,7 @@ func main (){
 	
 	
 	
-    resumen := `select generacion_de_resumen ('1','{"2020-10-27","2020-12-27"}');`
+    resumen := `select generacion_de_resumen ('1','{"2020-10-29","2020-11-29"}');`
     _, err = db.Exec(resumen)
 	if err != nil {
         fmt.Println("Error al cargar el resumen")
