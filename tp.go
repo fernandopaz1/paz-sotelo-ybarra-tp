@@ -175,7 +175,7 @@ func main (){
     //menu()
 
 	cargarDatos()
-	//cargarPkYFK();
+	cargarPkYFK();
 	
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
     if err != nil {
@@ -209,6 +209,7 @@ func main (){
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'tarjeta no válida ó no vigente');
                     aceptado = false;
+                    return aceptado;
                 end if;
 
                 -- pensar bien que estamos chequeando en este
@@ -222,12 +223,14 @@ func main (){
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
                     aceptado = false;
+                    return aceptado;
                 end if;
 
                 if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.limiteCompra < monto ) then
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'supera límite de tarjeta');
                     aceptado = false;
+                    return aceptado;
                 end if;
 
                 /* Esto esta comentado porque todavia hayq que solucionar el que podamos comparar
@@ -237,6 +240,7 @@ func main (){
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
                     aceptado = false;
+                    return aceptado;
                 end if;
                 */
 
@@ -245,6 +249,7 @@ func main (){
                     insert into rechazo values (
                         nroOperacion, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
                     aceptado = false;
+                    return aceptado;
                 end if;
 
 
