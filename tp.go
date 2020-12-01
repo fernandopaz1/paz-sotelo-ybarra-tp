@@ -81,8 +81,8 @@ func cargarDatos() {
 			create table compra (nroOperacion int ,nroTarjeta char[], nroComercio int, fecha timestamp, monto float, pagado boolean);
 			create table rechazo (nroRechazo int, nroTarjeta char[], nroComercio int, fecha date, monto float, motivo text);
 			create table cierre (año int, mes int, terminacion int, fechaInicio date, fechaCierre date, fechaVto date);
-			create table cabecera (nroResumen int, nombre text, apellido text, dommicilio text, nroTarjeta char[], desde date, hasta date, vence date, total float);
-			create table detalle (nroResumen int, nroLinea int, fecha date, nombreComercio text, monto float);
+			create table cabecera (nroResumen serial, nombre text, apellido text, domicilio text, nroTarjeta char[], desde date, hasta date, vence date, total float);
+			create table detalle (nroResumen int, nroLinea serial, fecha date, nombreComercio text, monto float);
 			create table alerta (nroAlerta int, nroTarjeta char[], fecha date, nroRechazo int, codAlerta int, descripcion text);
 			create table consumo (nroTarjeta char[], codigoSeguridad char[], nroComercio int, monto float)`
 
@@ -145,7 +145,7 @@ func cargarDatos() {
         fmt.Println("Error al cargar los comercios")
         log.Fatal(err)
     }
-    datosTarjetas := `insert into tarjeta values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','{"2","0","1","1","0","6"}','{"2","0","2","7","0","6"}','{"9","6","8","7"}','60000.00','{"v","i","g","e","n","t","e"}');
+    datosTarjetas := `	insert into tarjeta values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','{"2","0","1","1","0","6"}','{"2","0","2","7","0","6"}','{"9","6","8","7"}','60000.00','{"v","i","g","e","n","t","e"}');
 						insert into tarjeta values ('{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','2','{"2","0","1","2","0","2"}','{"2","0","2","8","0","2"}','{"2","4","9","2"}','70000.00','{"v","i","g","e","n","t","e"}');
 						insert into tarjeta values ('{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','3','{"2","0","1","3","0","1"}','{"2","0","2","9","0","2"}','{"4","4","8","2"}','70000.00','{"v","i","g","e","n","t","e"}');
 						insert into tarjeta values ('{"5","2","3","4","4","4","8","8","6","8","5","2","2","7","1","1"}','4','{"2","0","1","4","0","2"}','{"2","0","2","2","0","1"}','{"2","6","6","3"}','80000.00','{"v","i","g","e","n","t","e"}');
@@ -193,7 +193,7 @@ func cargar_cierre(db *sql.DB,anio int, mes int, terminacion int){
 				fechavto = fmt.Sprintf("%v-%v-%v",2021,m-11,d+t+5)		
 			}
 			comandoSQL := fmt.Sprintf("insert into cierre values ('%v','%v','%v','%v','%v','%v');",2020, m, t, fechainicio, fechacierre, fechavto)
-			fmt.Println(comandoSQL)
+			
    var err error
     _, err = db.Exec(comandoSQL)
     if err != nil {
@@ -324,19 +324,47 @@ func main (){
 	
     generacionDeResumen := 
     `create or replace function 
-        generacion_de_resumen(nroClient int ,anio int, mes int)  
+        generacion_de_resumen(nroClient int ,anio int, m int)  
         returns void as $$
             declare
                 client record;
                 tarj  record;
+                termTarj int;
+                varCierre record;
+                total float = 0;
+				v record;
+				numResumen int;
+                
             begin
 
-                -- create table cliente (nroCliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
-                select * into client from cliente c where c.nroCliente = nroClient;
+                
+                select * into client from cliente cl where cl.nroCliente = nroClient;
+                
                 select * into tarj from tarjeta t where t.nroCliente = nroClient and t.estado = '{"v","i","g","e","n","t","e"}';
-                raise notice 'hola %', client.nombre;
-                --insert into cierre values (anio , mes , tarj.nroTarjeta[16]::int, '2020-10-29','2020-11-29', periodo[2], periodo[2] + integer '7' );            
-            
+                
+                termTarj = tarj.nroTarjeta[16]::int;
+                
+                select * into varCierre from cierre c where anio = c.año and m = c.mes and termTarj = c.terminacion;
+                
+               
+                select sum(monto) into total from   compra where tarj.nroTarjeta = nroTarjeta;
+				
+				insert into cabecera values ( default, client.nombre, client.apellido, client.domicilio,
+                tarj.nroTarjeta, varCierre.fechaInicio, varCierre.fechaCierre, varCierre.fechaVto,total);
+                
+                select nroResumen into numResumen from cabecera where tarj.nroTarjeta = nroTarjeta and varCierre.fechaInicio = desde;
+                
+                for v in select * from compra com,comercio comer where comer.nroComercio = com.nroComercio 
+										and  com.nroTarjeta = tarj.nroTarjeta loop
+					
+					insert into detalle values (numResumen, default, v.fecha::date, v.nombre, v.monto);
+					
+				end loop;
+				
+				
+                ALTER SEQUENCE detalle_nroLinea_seq RESTART WITH 1;
+                
+             
             end; 
     $$ language plpgsql;`
 
@@ -346,7 +374,8 @@ func main (){
         log.Fatal(err)
     }
 
-	consumos := `insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"1","1","1","1"}','1','150.50');`
+	consumos := `insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','1','150.50');
+				insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','2','200.50')`
 	_, err = db.Exec(consumos)
 	if err != nil {
         fmt.Println("Error al cargar el consumo")
@@ -354,6 +383,8 @@ func main (){
     }
     
     compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','f');
+				select autorizacion_de_compra ('8','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','2','2020-11-27','200.50','f');
+				select autorizacion_de_compra ('50','{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','3','2020-11-27','300.00','f');
                 select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','f');
                 select autorizacion_de_compra ('3','{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','3','2020-11-27','150000.50','f');
                 select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','f');
@@ -365,12 +396,13 @@ func main (){
         log.Fatal(err)
     }
 	
-    resumen := `select generacion_de_resumen ('1','2020', '11');`
-    _, err = db.Exec(resumen)
-	if err != nil {
-        fmt.Println("Error al cargar el resumen")
-        log.Fatal(err)
-    }
+    //resumen := `select generacion_de_resumen ('1','2020', '11');`
+    //	_, err = db.Exec(resumen)
+	//if err != nil {
+        //fmt.Println("Error al cargar el resumen")
+      //  log.Fatal(err)
+    //}
+    
 }  
 
 
