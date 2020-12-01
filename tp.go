@@ -176,12 +176,40 @@ func cargarDatos() {
     }
 }
 
+//conviene usar una funcion en Go por el manejo de ciclos
+func cargar_cierre(db *sql.DB,anio int, mes int, terminacion int){
+	d := 1
+	fechainicio := "2020-01-01"
+	fechacierre := "2020-02-01"
+	fechavto := "2020-02-05"
+	for m:= 1; m < 13; m++{
+		for t:= 0; t< 10; t++{
+			fechainicio = fmt.Sprintf("%v-%v-%v",2020,m,d+t)
+			if m<12{
+			fechacierre = fmt.Sprintf("%v-%v-%v",2020,m+1,d+t+1)
+			fechavto = fmt.Sprintf("%v-%v-%v",2020,m+1,d+t+5)
+			}else {
+				fechacierre = fmt.Sprintf("%v-%v-%v",2021,m-11,d+t+1)
+				fechavto = fmt.Sprintf("%v-%v-%v",2021,m-11,d+t+5)		
+			}
+			comandoSQL := fmt.Sprintf("insert into cierre values ('%v','%v','%v','%v','%v','%v');",2020, m, t, fechainicio, fechacierre, fechavto)
+			fmt.Println(comandoSQL)
+   var err error
+    _, err = db.Exec(comandoSQL)
+    if err != nil {
+        log.Fatal(err)
+    }
+		}
+	}
+}	
+
 
 func main (){
     //menu()
 
 	cargarDatos()
-	cargarPkYFK();
+	cargarPkYFK()
+	
 	
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
     if err != nil {
@@ -189,6 +217,8 @@ func main (){
         log.Fatal(err)
     }
     defer db.Close()
+    
+    cargar_cierre(db,2020, 01, 0)
     
     funcPrintEnSQL :=
     `create function print(pk int) returns void as $$
@@ -291,8 +321,7 @@ func main (){
         fmt.Println("Error al cargar funcion de autenticacion de compra")
         log.Fatal(err)
     }
-
-
+	
     generacionDeResumen := 
     `create or replace function 
         generacion_de_resumen(nroClient int ,anio int, mes int)  
