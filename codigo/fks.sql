@@ -1,0 +1,9 @@
+alter table tarjeta add constraint tarjeta_fk foreign key (nroCliente) references cliente (nroCliente);
+alter table compra add constraint compra_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+alter table compra add constraint compra_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
+alter table compra add constraint rechazo_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+alter table compra add constraint rechazo_nroComercio_fk foreign key (nroComercio) references comercio (nroComercio);
+alter table cabecera add constraint cabecera_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+alter table detalle add constraint detalle_fk foreign key (nroResumen) references cabecera (nroResumen);
+alter table alerta add constraint alerta_nroTarjeta_fk foreign key (nroTarjeta) references tarjeta (nroTarjeta);
+alter table alerta add constraint alerta_nroRechazo_fk foreign key (nroRechazo) references rechazo (nroRechazo)

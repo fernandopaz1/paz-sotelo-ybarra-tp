@@ -1,0 +1,20 @@
+insert into cliente values ('1','Fernando','Paz','Callao 345','{"1","1","3","4","5","6","8","7","6","5"}');
+insert into cliente values ('2','Manolo','Lettiere','Matheu 3942','{"1","1","4","7","5","4","4","3","6","0"}');
+insert into cliente values ('3','Carlota','Correa','San Martin 975','{"1","1","9","4","4","2","7","7","3","5"}');
+insert into cliente values ('4','Florentina','Sosa','Fonruoge 3870','{"1","1","4","6","0","2","0","6","9","6"}');
+insert into cliente values ('5','Yara','Leiva','Charcas 5128','{"1","1","4","7","7","7","7","6","3","8"}');
+insert into cliente values ('6','Cristiano','Borroni','Av Centenario 837','{"1","1","4","7","4","3","2","2","7","3"}');
+insert into cliente values ('7','Leonor','Ortiz','24 de septiembre 263','{"1","1","4","2","1","6","1","5","1","5"}');
+insert into cliente values ('8','Levina','Dellucci','Thames 550','{"1","1","4","8","5","8","0","7","6","7"}');
+insert into cliente values ('9','Salvino','Castiglione','Moreno 1785','{"1","1","4","8","8","3","5","2","9","1"}');
+insert into cliente values ('10','Franco','Cruz','Nuñez 345','{"1","1","4","5","5","4","3","5","0","0"}');
+insert into cliente values ('11','Virgilio','Angelo','Mitre 424','{"1","1","4","4","2","1","3","0","3","0"}');
+insert into cliente values ('12','Galeno','Romero','Gonzalez 461','{"1","1","4","4","3","0","8","7","9","6"}');
+insert into cliente values ('13','Rosa','Rousse','Av Centenario 743','{"1","1","4","7","4","3","8","4","9","5"}');
+insert into cliente values ('14','Agustin','Arcuri','Fotheringham 282','{"1","1","4","4","6","2","2","8","0","8"}');
+insert into cliente values ('15','Nekate','Longo','Av Besares 1170','{"1","1","4","4","2","7","8","2","6","3"}');
+insert into cliente values ('16','Ventana','Garcia','Yrigoyen 739','{"1","1","4","4","5","6","4","8","3","5"}');
+insert into cliente values ('17','Nevada','Lombardi','Boulogne Sur Mer 372','{"1","1","4","4","5","4","0","4","0","7"}');
+insert into cliente values ('18','Telma','Chavez','Av Cabildo 2370','{"1","1","4","7","8","0","5","4","1","4"}');
+insert into cliente values ('19','Augusto','Bravo','San Luis 2745','{"1","1","4","4","8","3","1","1","3","4"}');
+insert into cliente values ('20','Romano','Cocci','Calle 24 1235','{"1","1","4","4","3","0","9","2","6","1"}')
