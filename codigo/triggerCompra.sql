@@ -8,15 +8,17 @@ create or replace function crear_alerta_compras()  returns trigger as $$
 		
 	begin
 		
-		 select codPostal into cp from comercio where nroComercio = new.nroComercio;
+		select codPostal into cp from comercio where nroComercio = new.nroComercio;
 		
 		
 		select count (codPostal) into cantComprasUnMin from comercio where nroComercio in 
-		(select distinct nroComercio from compra c where c.nroTarjeta = new.nroTarjeta and c.fecha - new.fecha < tiempoCompra );
+			(select distinct nroComercio from compra c where c.nroTarjeta = new.nroTarjeta and 
+															c.fecha - new.fecha < tiempoCompra );
 
 		
 		select count (distinct codPostal) into cantComprasCincoMin from comercio where nroComercio in 
-		(select distinct nroComercio from compra c where c.nroTarjeta = new.nroTarjeta and c.fecha - new.fecha < tiempoCompraCinco);
+			(select distinct nroComercio from compra c where c.nroTarjeta = new.nroTarjeta and
+															c.fecha - new.fecha < tiempoCompraCinco);
 
 		
 		
@@ -36,8 +38,6 @@ create or replace function crear_alerta_compras()  returns trigger as $$
 		
 		return new;
 		
-		
-	
 	end; 
 $$ language plpgsql;
 create trigger alerta_automatica_compras_trg

@@ -140,50 +140,22 @@ func main (){
     
     cargarComandosAPostgres(db,"codigo/triggerCompra.sql")
     
-    
+    cargarComandosAPostgres(db,"codigo/datosConsumos.sql")
 
 
-	consumos := `insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','1','150.50');
-				insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','2','200.50')`
-	_, err = db.Exec(consumos)
+    _, err = db.Exec(`select cargar_consumos_en_compra()`)
 	if err != nil {
         fmt.Println("Error al cargar el consumo")
         log.Fatal(err)
     }
-   
-    compras := `select autorizacion_de_compra ('1','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','2020-11-27','150.50','f');
-				select autorizacion_de_compra ('65','{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','2','2020-11-27','150.50','f');
-				select autorizacion_de_compra ('155','{"4","4","3","4","5","6","8","7","6","5","5","6","8","7","6","1"}','2','2020-11-27','150.50','f');
-				select autorizacion_de_compra ('156','{"4","4","3","4","5","6","8","7","6","5","5","6","8","7","6","1"}','3','2020-11-27','150.50','f');
-				select autorizacion_de_compra ('50','{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','3','2020-11-27','300.00','f');
-                select autorizacion_de_compra ('2','{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','3','2020-11-27','150.50','f');
-                select autorizacion_de_compra ('3','{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','3','2020-11-27','150000.50','f');
-                select autorizacion_de_compra ('5','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','f');
-                select autorizacion_de_compra ('4','{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','5','2020-11-27','155.50','f');
-                select autorizacion_de_compra ('20','{"5","5","0","4","5","6","8","7","6","2","2","6","2","2","6","5"}','5','2050-11-27','155.50','f');
-                select autorizacion_de_compra ('34','{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','4','2020-11-27','150000.50','f');`
-      
-                _, err = db.Exec(compras)
-	if err != nil {
-        fmt.Println("Error al cargar la compra")
-        log.Fatal(err)
-    }
-   
-	
-    //resumen := `select generacion_de_resumen ('1','2020', '11');`
-    //	_, err = db.Exec(resumen)
-	//if err != nil {
-        //fmt.Println("Error al cargar el resumen")
-      //  log.Fatal(err)
-    //}
-    
+
 }  
 
 
 func menu(){
     fmt.Print("\033[H\033[2J") //Limpia la terminal
 
-    fmt.Println(`Introduzca la opcion elegida :
+    fmt.Println(`Intsroduzca la opcion elegida :
                 1. Para crear la base de datos
                 2. Para agregar las Pk y Fk 
                 3. Para cargar la tabla 

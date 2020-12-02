@@ -1,5 +1,5 @@
 create or replace function 
-    autorizacion_de_compra(nroOperacion int ,nroTarj char[], nroComercio int, fecha date, monto float, pagado boolean)  
+    autorizacion_de_compra(nroTarj char[], nroComercio int, fecha date, monto float, pagado boolean)  
     returns boolean as $$
     declare
         aceptado boolean = true;
@@ -46,12 +46,12 @@ create or replace function
         if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
             insert into rechazo values (
                 default, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
-            aceptado = false;
+                aceptado = false;
             return aceptado;
         end if;
 
         if aceptado then
-                insert into compra values (nroOperacion ,nroTarj, nroComercio , fecha, monto , pagado);
+            insert into compra values (default ,nroTarj, nroComercio , fecha, monto , pagado);
         end if;
     return aceptado;
     end; 

@@ -12,3 +12,14 @@ create or replace function array_de_char_a_date(venc char[]) returns date as $$
         return result;
     end;
 $$ language plpgsql;
+
+
+create or replace function cargar_consumos_en_compra() returns void as $$
+    declare
+        v record;
+    begin
+        for v in select * from consumo loop
+            perform autorizacion_de_compra  (v.nroTarjeta, v.nroComercio, '2020-01-01',v.monto, 'f');
+        end loop;
+    end;
+$$ language plpgsql;
