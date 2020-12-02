@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	bolt "github.com/coreos/bbolt"
 	_ "github.com/lib/pq"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+	"strconv"
+	"encoding/json"
 )
 
 func createDatabase() {
@@ -32,39 +35,39 @@ func createDatabase() {
 	}
 }
 
-type cliente struct {
-	nroCliente                  int
-	nombre, apellido, domicilio string
-	telefono                    [12]rune
+type Cliente struct {
+	NroCliente                  int
+	Nombre, Apellido, Domicilio string
+	Telefono                    [12]rune
 }
 
-type comercio struct {
-	nroComercio                  int
-	nombre, domicilio, codPostal string
-	telefono                     [12]rune
+type Comercio struct {
+	NroComercio                  int
+	Nombre, Domicilio, CodPostal string
+	Telefono                     [12]rune
 }
 
-type tarjeta struct {
-	nroCliente               int
-	nroTarjeta               [16]rune
-	validaDesde, validaHasta [6]rune
-	codigoSeguridad          [4]rune
-	estado                   [10]rune
-	limiteCompra             float64
+type Tarjeta struct {
+	NroCliente               int
+	NroTarjeta               [16]rune
+	ValidaDesde, ValidaHasta [6]rune
+	CodigoSeguridad          [4]rune
+	Estado                   [10]rune
+	LimiteCompra             float64
 }
 
-type compra struct {
-	nroOperacion, nroComercio int
-	nroTarjeta                [16]rune
-	fecha                     time.Time
-	monto                     float64
-	pagado                    bool
+type Compra struct {
+	NroOperacion, NroComercio int
+	NroTarjeta                [16]rune
+	Fecha                     time.Time
+	Monto                     float64
+	Pagado                    bool
 }
-type consumo struct {
-	nroTarjeta      [16]rune
-	codigoSeguridad [4]rune
-	nroComercio     int
-	monto           float64
+type Consumo struct {
+	NroTarjeta      [16]rune
+	CodigoSeguridad [4]rune
+	NroComercio     int
+	Monto           float64
 }
 
 func cargarDatos() {
@@ -114,6 +117,134 @@ func cargarCierre(db *sql.DB, anio int) {
 	}
 }
 
+func crearBoltDB() {
+
+	db, err := bolt.Open("bolt.db", 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
+	// se cargan los cliente
+	
+	fernando := Cliente{1,"Fernando","Paz","Callao 345",[12]rune{'1','1','3','4','5','6','8','7','6','5','6','5'}}
+	data, err := json.Marshal(fernando)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "cliente", []byte(strconv.Itoa(fernando.NroCliente)), data)
+	resultado1, err := ReadUnique(db, "cliente", []byte(strconv.Itoa(fernando.NroCliente)))
+	fmt.Printf("%s\n", resultado1)
+	
+	manolo := Cliente{2,"Manolo","Lettiere","Matheu 3942",[12]rune{'1','1','4','7','5','4','4','3','6','0'}}
+	data, err = json.Marshal(manolo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "cliente", []byte(strconv.Itoa(manolo.NroCliente)), data)
+	resultado2, err := ReadUnique(db, "cliente", []byte(strconv.Itoa(manolo.NroCliente)))
+	fmt.Printf("%s\n", resultado2)
+	
+	carlota := Cliente{3,"Carlota","Correa","San Martin 975",[12]rune{'1','1','9','4','4','2','7','7','3','5'}}
+	data, err = json.Marshal(carlota)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "cliente", []byte(strconv.Itoa(carlota.NroCliente)), data)
+	resultado3, err := ReadUnique(db, "cliente", []byte(strconv.Itoa(carlota.NroCliente)))
+	fmt.Printf("%s\n", resultado3)
+	
+	// se cargan los comercio
+	
+	adidas := Comercio{1,"Adidas","Pte peron 3221","1643",[12]rune{'1','1','4','9','2','1','1','9','7','1'}}
+	data, err = json.Marshal(adidas)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)), data)
+	resultado4, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)))
+	fmt.Printf("%s\n", resultado4)
+	
+	nike := Comercio{2,"Nike","Miraflores 2121","1643",[12]rune{'1','1','4','4','5','1','8','7','6','5'}}
+	data, err = json.Marshal(nike)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)), data)
+	resultado5, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)))
+	fmt.Printf("%s\n", resultado5)
+	
+	mc_donals := Comercio{3,"Mc Donals","French 231","1643",[12]rune{'1','1','4','4','1','1','0','9','6','5'}}
+	data, err = json.Marshal(mc_donals)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)), data)
+	resultado6, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)))
+	fmt.Printf("%s\n", resultado6)
+	
+	// se cargan compras
+	
+	adidas := Comercio{1,{5,1,5,4,5,6,8,7,6,5,5,6,8,7,6,5},1,2020-11-27,150.50,f}
+	data, err = json.Marshal(adidas)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)), data)
+	resultado4, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)))
+	fmt.Printf("%s\n", resultado4)
+	
+	nike := Comercio{2,"Nike","Miraflores 2121","1643",[12]rune{'1','1','4','4','5','1','8','7','6','5'}}
+	data, err = json.Marshal(nike)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)), data)
+	resultado5, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)))
+	fmt.Printf("%s\n", resultado5)
+	
+	mc_donals := Comercio{3,"Mc Donals","French 231","1643",[12]rune{'1','1','4','4','1','1','0','9','6','5'}}
+	data, err = json.Marshal(mc_donals)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)), data)
+	resultado6, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)))
+	fmt.Printf("%s\n", resultado6)
+	
+
+}
+
+func CreateUpdate(db *bolt.DB, bucketName string, key []byte, val []byte) error {
+	// abre transacción de escritura
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
+	err = b.Put(key, val)
+	if err != nil {
+		return err
+	}
+	// cierra transacción
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ReadUnique(db *bolt.DB, bucketName string, key []byte) ([]byte, error) {
+	var buf []byte
+	// abre una transacción de lectura
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		buf = b.Get(key)
+		return nil
+	})
+	return buf, err
+}
+
 func main() {
 	//menu()
 
@@ -152,6 +283,8 @@ func main() {
 	}
 
 	cargarComandosAPostgres(db, "codigo/removeKeys.sql")
+	
+	crearBoltDB()
 }
 
 func menu() {

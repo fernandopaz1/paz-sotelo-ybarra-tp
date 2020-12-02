@@ -1,5 +1,5 @@
 insert into comercio values ('1','Adidas','Pte peron 3221','1643','{"1","1","4","9","2","1","1","9","7","1"}');
-insert into comercio values ('2','Nike','Miraflores','1643','{"1","1","4","4","5","1","8","7","6","5"}');
+insert into comercio values ('2','Nike','Miraflores 2121','1643','{"1","1","4","4","5","1","8","7","6","5"}');
 insert into comercio values ('3','Mc Donals','French 231','1643','{"1","1","4","4","1","1","0","9","6","5"}');
 insert into comercio values ('4','Burger King','Av Almafuerte 436','1643','{"1","1","4","4","4","3","0","8","2","5"}');
 insert into comercio values ('5','Compumundo','Guido Spano 2534','1643','{"1","1","4","4","5","5","3","2","2","3"}');
