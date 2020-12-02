@@ -29,17 +29,16 @@ create or replace function
         if not exists(
             select * from tarjeta t,consumo c
                 where t.nroTarjeta = nroTarj and c.codigoSeguridad = t.codigoSeguridad and nroTarj = c.nroTarjeta) and
-                exists (select * from consumo c2 where c2.nroTarjeta = nroTarj) then
+                    exists (select * from consumo c2 where c2.nroTarjeta = nroTarj) then
 						insert into rechazo values (
 						default, nroTarj, nroComercio, fecha, monto, 'código de seguridad inválido');
-            aceptado = false;
+                        aceptado = false;
             return aceptado;
         end if;
         
         if f_vencimiento < fecha then
             insert into rechazo values (
-            default, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
-            raise notice 'corrio el if de fecha de vencimient';
+                default, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
             aceptado = false;
             return aceptado;
         end if;
@@ -50,7 +49,7 @@ create or replace function
             aceptado = false;
             return aceptado;
         end if;      
-  
+
         if aceptado then
             insert into compra values (default ,nroTarj, nroComercio , fecha, monto , pagado);
         end if;
