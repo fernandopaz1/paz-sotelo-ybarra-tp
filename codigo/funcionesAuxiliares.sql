@@ -19,7 +19,7 @@ create or replace function cargar_consumos_en_compra() returns void as $$
         v record;
     begin
         for v in select * from consumo loop
-            perform autorizacion_de_compra  (v.nroTarjeta, v.nroComercio, '2020-01-01',v.monto, 'f');
+            perform autorizacion_de_compra  (v.nroTarjeta, v.nroComercio, '2020-11-01',v.monto, 'f');
         end loop;
     end;
 $$ language plpgsql;

@@ -6,6 +6,17 @@ create or replace function
         f_validez  char[];
         f_vencimiento date;
     begin
+		
+		select valHasta into f_validez from tarjeta t where t.nroTarjeta = nroTarj;
+        select into f_vencimiento array_de_char_a_date(f_validez);
+        
+		if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
+            insert into rechazo values (
+                default, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
+                aceptado = false;
+            return aceptado;
+        end if;
+        
         if not exists(
             select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"v","i","g","e","n","t","e"}') then
             insert into rechazo values (
@@ -25,16 +36,6 @@ create or replace function
             return aceptado;
         end if;
         
-        if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.limiteCompra < monto ) then
-            insert into rechazo values (
-                default, nroTarj, nroComercio, fecha, monto, 'supera límite de tarjeta');
-            aceptado = false;
-            return aceptado;
-        end if;
-
-        select valHasta into f_validez from tarjeta t where t.nroTarjeta = nroTarj;
-        select into f_vencimiento array_de_char_a_date(f_validez);
-        
         if f_vencimiento < fecha then
             insert into rechazo values (
             default, nroTarj, nroComercio, fecha, monto, 'plazo de vigencia expirado');
@@ -43,13 +44,13 @@ create or replace function
             return aceptado;
         end if;
         
-        if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
+        if exists (select * from tarjeta t where t.nroTarjeta = nroTarj and t.limiteCompra < monto ) then
             insert into rechazo values (
-                default, nroTarj, nroComercio, fecha, monto, 'la tarjeta se encuentra suspendida');
-                aceptado = false;
+                default, nroTarj, nroComercio, fecha, monto, 'supera límite de tarjeta');
+            aceptado = false;
             return aceptado;
-        end if;
-
+        end if;      
+  
         if aceptado then
             insert into compra values (default ,nroTarj, nroComercio , fecha, monto , pagado);
         end if;
