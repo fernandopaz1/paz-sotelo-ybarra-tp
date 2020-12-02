@@ -185,32 +185,33 @@ func crearBoltDB() {
 	
 	// se cargan compras
 	
-	adidas := Comercio{1,{5,1,5,4,5,6,8,7,6,5,5,6,8,7,6,5},1,2020-11-27,150.50,f}
-	data, err = json.Marshal(adidas)
-	if err != nil {
-		log.Fatal(err)
-	}
-	CreateUpdate(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)), data)
-	resultado4, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(adidas.NroComercio)))
-	fmt.Printf("%s\n", resultado4)
 	
-	nike := Comercio{2,"Nike","Miraflores 2121","1643",[12]rune{'1','1','4','4','5','1','8','7','6','5'}}
-	data, err = json.Marshal(nike)
+	compra1 := Compra{1,1,[16]rune{'5','1','5','4','5','6','8','7','6','5','5','6','8','7','6','5'},2020-11-27,150.50,false}
+	data, err = json.Marshal(compra1)
 	if err != nil {
 		log.Fatal(err)
 	}
-	CreateUpdate(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)), data)
-	resultado5, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(nike.NroComercio)))
-	fmt.Printf("%s\n", resultado5)
+	CreateUpdate(db, "compra", []byte(strconv.Itoa(compra1.NroOperacion)), data)
+	resultado7, err := ReadUnique(db, "compra", []byte(strconv.Itoa(compra1.NroOperacion)))
+	fmt.Printf("%s\n", resultado7)
 	
-	mc_donals := Comercio{3,"Mc Donals","French 231","1643",[12]rune{'1','1','4','4','1','1','0','9','6','5'}}
-	data, err = json.Marshal(mc_donals)
+	compra2 := Compra{2,[16]rune{'4','0','3','4','1','6','1','7','6','5','2','2','8','0','6','5'},3,2020-11-27,150.50,false}
+	data, err = json.Marshal(compra2)
 	if err != nil {
 		log.Fatal(err)
 	}
-	CreateUpdate(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)), data)
-	resultado6, err := ReadUnique(db, "comercio", []byte(strconv.Itoa(mc_donals.NroComercio)))
-	fmt.Printf("%s\n", resultado6)
+	CreateUpdate(db, "compra", []byte(strconv.Itoa(compra2.NroOperacion)), data)
+	resultado8, err := ReadUnique(db, "compra", []byte(strconv.Itoa(compra2.NroOperacion)))
+	fmt.Printf("%s\n", resultado8)
+	
+	compra3 := Compra{3,[16]rune{'5','5','3','4','5','6','4','7','3','3','5','6','8','5','5','1'},3,2020-11-27,150000.50,false}
+	data, err = json.Marshal(compra3)
+	if err != nil {
+		log.Fatal(err)
+	}
+	CreateUpdate(db, "compra", []byte(strconv.Itoa(compra3.NroOperacion)), data)
+	resultado9, err := ReadUnique(db, "compra", []byte(strconv.Itoa(compra3.NroOperacion)))
+	fmt.Printf("%s\n", resultado9)
 	
 
 }
