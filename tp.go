@@ -148,6 +148,12 @@ func main (){
         fmt.Println("Error al cargar el consumo")
         log.Fatal(err)
     }
+    
+      _, err = db.Exec(`select generar_resumenes_del_anio()`)
+	if err != nil {
+        fmt.Println("Error al cargar el consumo")
+        log.Fatal(err)
+    }
 
 }  
 
