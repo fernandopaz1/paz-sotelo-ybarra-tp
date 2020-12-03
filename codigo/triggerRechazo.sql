@@ -1,13 +1,13 @@
 create or replace function crear_alerta()  returns trigger as $$
 	declare
-		mismoDia  interval := interval '1 day';
-		cantRechazo int;
+		mismo_dia  interval := interval '1 day';
+		cant_rechazo int;
 	begin
-		insert into alerta values(default, new.nroTarjeta, new.fecha , new.nroRechazo, 0, new.motivo);
-		select count(*) into cantRechazo from rechazo where nroTarjeta = new.nroTarjeta and fecha - new.fecha < mismoDia and new.motivo = 'supera límite de tarjeta';
-		if (cantRechazo > 1) then
-			insert into alerta values(default, new.nroTarjeta, new.fecha , new.nroRechazo, 32,'Tarjeta suspendida por varios excesos de limite');
-			update tarjeta set estado = '{"s","u","s","p","e","n","d","i","d","a"}' where nroTarjeta = new.nroTarjeta;
+		insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 0, new.motivo);
+		select count(*) into cant_rechazo from rechazo where nro_tarjeta = new.nro_tarjeta and fecha - new.fecha < mismo_dia and new.motivo = 'supera límite de tarjeta';
+		if (cant_rechazo > 1) then
+			insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 32,'Tarjeta suspendida por varios excesos de limite');
+			update tarjeta set estado = '{"s","u","s","p","e","n","d","i","d","a"}' where nro_tarjeta = new.nro_tarjeta;
 		end if;
 		return new;
 	end; 

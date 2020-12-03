@@ -13,3 +13,6 @@
 
 # Local History for Visual Studio Code
 .history/
+
+# Evitamos subir la base bolt.db
+bolt.db

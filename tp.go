@@ -119,7 +119,7 @@ func main() {
 func menu() {
 	fmt.Print("\033[H\033[2J") //Limpia la terminal
 
-	fmt.Println(`Intsroduzca la opcion elegida :
+	fmt.Println(`Introduzca la opcion elegida :
 				1. Para crear la base de datos
 				2. Para cargar datos
 				3. Para agregar las Pk y Fk
@@ -137,38 +137,38 @@ func menu() {
 
 	switch char {
 	case '1':
-		crearBase()
 		fmt.Println("Creando")
+		crearBase()
 		time.Sleep(2 * time.Second)
 		break
 	case '2':
-		cargarDatos()
 		fmt.Println("cargando la base")
+		cargarDatos()
 		time.Sleep(2 * time.Second)
 		break
 	case '3':
-		cargarPkYFK()
 		fmt.Println("cargando PKs y FKs")
+		cargarPkYFK()
 		time.Sleep(2 * time.Second)
 		break
 	case '4':
-		cargarProceduresYTriggers()
 		fmt.Println("cargando stored procedures")
+		cargarProceduresYTriggers()
 		time.Sleep(2 * time.Second)
 		break
 	case '5':
-		testearBaseConConsumo()
 		fmt.Println("testando base con consumo")
+		testearBaseConConsumo()
 		time.Sleep(2 * time.Second)
 		break
 	case '6':
-		borrarKeys()
 		fmt.Println("borrando PKs y FKs")
+		borrarKeys()
 		time.Sleep(2 * time.Second)
 		break
 	case '7':
-		crearBoltDB()
 		fmt.Println("creando BoltDB")
+		crearBoltDB()
 		time.Sleep(2 * time.Second)
 		break
 

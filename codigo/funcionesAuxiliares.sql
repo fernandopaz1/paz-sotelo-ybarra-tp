@@ -19,7 +19,7 @@ create or replace function cargar_consumos_en_compra() returns void as $$
         v record;
     begin
         for v in select * from consumo loop
-            perform autorizacion_de_compra  (v.nroTarjeta, v.nroComercio, '2020-11-15',v.monto, 'f');
+            perform autorizacion_de_compra  (v.nro_tarjeta, v.nro_comercio, '2020-11-15',v.monto, 'f');
         end loop;
     end;
 $$ language plpgsql;
@@ -31,7 +31,7 @@ create or replace function generar_resumenes_del_anio() returns void as $$
     begin
         for v in select * from cliente loop
             for m in 1..12 loop
-				perform generacion_de_resumen (v.nroCliente,'2020',m);
+				perform generacion_de_resumen (v.nro_cliente,'2020',m);
 				end loop;
         end loop;
     end;
