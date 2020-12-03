@@ -14,110 +14,14 @@ import (
 	"time"
 )
 
-func crearBase() {
-	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Error al abrir la base de datos")
-	}
-	defer db.Close()
-
-	_, err = db.Exec(`drop database if exists transacciones;`)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Error al eliminar la base si ya existia")
-	}
-
-	_, err = db.Exec(`create database transacciones;`)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Error al crear la base transacciones")
-	}
-}
-
-type Cliente struct {
-	NroCliente                  int
-	Nombre, Apellido, Domicilio string
-	Telefono                    [12]rune
-}
-
-type Comercio struct {
-	NroComercio                  int
-	Nombre, Domicilio, CodPostal string
-	Telefono                     [12]rune
-}
-
-type Tarjeta struct {
-	NroCliente               int
-	NroTarjeta               [16]rune
-	ValidaDesde, ValidaHasta [6]rune
-	CodigoSeguridad          [4]rune
-	Estado                   [10]rune
-	LimiteCompra             float64
-}
-
-type Compra struct {
-	NroOperacion, NroComercio int
-	NroTarjeta                [16]rune
-	Fecha                     time.Time
-	Monto                     float64
-	Pagado                    bool
-}
-
-
-func cargarDatos() {
-	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
-	if err != nil {
-		fmt.Println("Error al abrir la base de datos ya creada")
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	cargarComandosAPostgres(db, "codigo/crearTablas.sql")
-
-	cargarComandosAPostgres(db, "codigo/datosClientes.sql")
-
-	cargarComandosAPostgres(db, "codigo/datosComercios.sql")
-
-	cargarComandosAPostgres(db, "codigo/datosTarjetas.sql")
-
-	cargarCierre(db, 2020)
-
-	cargarComandosAPostgres(db, "codigo/datosConsumos.sql")
-}
-
-//conviene usar una funcion en Go por el manejo de ciclos
-func cargarCierre(db *sql.DB, anio int) {
-	d := 1
-	var fechainicio string
-	var fechacierre string
-	var fechavto string
-	for m := 1; m < 13; m++ {
-		for t := 0; t < 10; t++ {
-			fechainicio = fmt.Sprintf("%v-%v-%v", anio, m, d+t)
-			if m < 12 {
-				fechacierre = fmt.Sprintf("%v-%v-%v", anio, m+1, d+t+1)
-				fechavto = fmt.Sprintf("%v-%v-%v", anio, m+1, d+t+5)
-			} else {
-				fechacierre = fmt.Sprintf("%v-%v-%v", anio, m-11, d+t+1)
-				fechavto = fmt.Sprintf("%v-%v-%v", anio, m-11, d+t+5)
-			}
-			comandoSQL := fmt.Sprintf("insert into cierre values ('%v','%v','%v','%v','%v','%v');", anio, m, t, fechainicio, fechacierre, fechavto)
-
-			_, err := db.Exec(comandoSQL)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-}
-
 func main() {
 	menu()
 }
 
 func menu() {
-	fmt.Print("\033[H\033[2J") //Limpia la terminal
+
+	//Limpia la terminal
+	fmt.Print("\033[H\033[2J")
 
 	fmt.Println(`Introduzca la opcion elegida :
 				1. Para crear la base de datos
@@ -174,13 +78,110 @@ func menu() {
 
 	case 'q':
 		fmt.Println("Chau")
-		return;
+		return
 		break
 	default:
 		fmt.Println("La opcion elegida no es valida")
 		time.Sleep(2 * time.Second)
 	}
 	menu()
+}
+
+type Cliente struct {
+	NroCliente                  int
+	Nombre, Apellido, Domicilio string
+	Telefono                    [12]rune
+}
+
+type Comercio struct {
+	NroComercio                  int
+	Nombre, Domicilio, CodPostal string
+	Telefono                     [12]rune
+}
+
+type Tarjeta struct {
+	NroCliente               int
+	NroTarjeta               [16]rune
+	ValidaDesde, ValidaHasta [6]rune
+	CodigoSeguridad          [4]rune
+	Estado                   [10]rune
+	LimiteCompra             float64
+}
+
+type Compra struct {
+	NroOperacion, NroComercio int
+	NroTarjeta                [16]rune
+	Fecha                     time.Time
+	Monto                     float64
+	Pagado                    bool
+}
+
+func crearBase() {
+	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al abrir la base de datos")
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`drop database if exists transacciones;`)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al eliminar la base si ya existia")
+	}
+
+	_, err = db.Exec(`create database transacciones;`)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al crear la base transacciones")
+	}
+}
+
+func cargarDatos() {
+	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
+	if err != nil {
+		fmt.Println("Error al abrir la base de datos ya creada")
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	cargarComandosAPostgres(db, "codigo/crearTablas.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosClientes.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosComercios.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosTarjetas.sql")
+
+	cargarCierre(db, 2020)
+
+	cargarComandosAPostgres(db, "codigo/datosConsumos.sql")
+}
+
+//conviene usar una funcion en Go por el manejo de ciclos
+func cargarCierre(db *sql.DB, anio int) {
+	d := 1
+	var fechainicio string
+	var fechacierre string
+	var fechavto string
+	for m := 1; m < 13; m++ {
+		for t := 0; t < 10; t++ {
+			fechainicio = fmt.Sprintf("%v-%v-%v", anio, m, d+t)
+			if m < 12 {
+				fechacierre = fmt.Sprintf("%v-%v-%v", anio, m+1, d+t+1)
+				fechavto = fmt.Sprintf("%v-%v-%v", anio, m+1, d+t+5)
+			} else {
+				fechacierre = fmt.Sprintf("%v-%v-%v", anio, m-11, d+t+1)
+				fechavto = fmt.Sprintf("%v-%v-%v", anio, m-11, d+t+5)
+			}
+			comandoSQL := fmt.Sprintf("insert into cierre values ('%v','%v','%v','%v','%v','%v');", anio, m, t, fechainicio, fechacierre, fechavto)
+
+			_, err := db.Exec(comandoSQL)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
 
 func cargarPkYFK() {
@@ -228,7 +229,6 @@ func cargarProceduresYTriggers() {
 	cargarComandosAPostgres(db, "codigo/triggerRechazo.sql")
 
 	cargarComandosAPostgres(db, "codigo/triggerCompra.sql")
-
 
 }
 
@@ -428,4 +428,3 @@ func stringATime(str string) (t time.Time) {
 	}
 	return t
 }
-
