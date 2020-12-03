@@ -582,7 +582,6 @@ create or replace function
     return aceptado;
     end; 
 $$ language plpgsql;
-----
 .
 .
 .
