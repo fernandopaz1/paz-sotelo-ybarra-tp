@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func createDatabase() {
+func crearBase() {
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
@@ -137,7 +137,7 @@ func menu() {
 
 	switch char {
 	case '1':
-		createDatabase()
+		crearBase()
 		fmt.Println("Creando")
 		time.Sleep(2 * time.Second)
 		break
