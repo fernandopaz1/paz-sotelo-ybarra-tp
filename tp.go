@@ -63,12 +63,7 @@ type Compra struct {
 	Monto                     float64
 	Pagado                    bool
 }
-type Consumo struct {
-	NroTarjeta      [16]rune
-	CodigoSeguridad [4]rune
-	NroComercio     int
-	Monto           float64
-}
+
 
 func cargarDatos() {
 	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
@@ -144,31 +139,37 @@ func menu() {
 	case '1':
 		createDatabase()
 		fmt.Println("Creando")
-
+		time.Sleep(2 * time.Second)
 		break
 	case '2':
 		cargarDatos()
 		fmt.Println("cargando la base")
+		time.Sleep(2 * time.Second)
 		break
 	case '3':
 		cargarPkYFK()
-		fmt.Println("verificando stored procedures")
+		fmt.Println("cargando PKs y FKs")
+		time.Sleep(2 * time.Second)
 		break
 	case '4':
 		cargarProceduresYTriggers()
-		fmt.Println("verificando stored procedures")
+		fmt.Println("cargando stored procedures")
+		time.Sleep(2 * time.Second)
 		break
 	case '5':
 		testearBaseConConsumo()
-		fmt.Println("Cargando en NoSQL")
+		fmt.Println("testando base con consumo")
+		time.Sleep(2 * time.Second)
 		break
 	case '6':
 		borrarKeys()
-		fmt.Println("Cargando en NoSQL")
+		fmt.Println("borrando PKs y FKs")
+		time.Sleep(2 * time.Second)
 		break
 	case '7':
 		crearBoltDB()
-		fmt.Println("Cargando en NoSQL")
+		fmt.Println("creando BoltDB")
+		time.Sleep(2 * time.Second)
 		break
 
 	case 'q':
@@ -427,3 +428,4 @@ func stringATime(str string) (t time.Time) {
 	}
 	return t
 }
+
