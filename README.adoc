@@ -1,14 +1,23 @@
+= Base de Datos : Trabajo Práctico
+Cristina_Fernández_de_Kirchner <cfk@gmail.com>; Nestor_Kirchner <nestor@gmail.com>
+v1, {docdate}. Docentes Eva Perón y Juan Perón (COM-08)
+:title-page:
+:numbered:
+:source-highlighter: coderay
+:tabsize: 4
+
+
 == Introducción
 
-En este trabajo practico modelaremos transacciones de tarjetas de credito para ello, debemos crear una base de datos e instanciar todos los datos de clientes, tarjetas y comercios. 
+En este trabajo practico modelaremos transacciones de tarjetas de credito para ello, debemos crear una base de datos e instanciar todos los datos de clientes, tarjetas y comercios.
 
-Por otro lado, para controlar que las compras sean validas, creamos Stored Procedures y Triggers. Finalizando con la creacion de una base de datos NoSQL basada en JSON. 
+Por otro lado, para controlar que las compras sean validas, creamos Stored Procedures y Triggers. Finalizando con la creacion de una base de datos NoSQL basada en JSON.
 
 == Descripción
 
-En el curso de la resolucion del trabajo practico nos encontramos con varias dificultades que supimos resolver: 
+En el curso de la resolucion del trabajo practico nos encontramos con varias dificultades que supimos resolver:
 
-* Sintaxis del lenguaje : Acostumbrados a otro tipo de lenguaje mas flexible en donde la sintaxis no ocupaba un rol muy importante, con Go supimos padecer esta mala praxis. 
+* Sintaxis del lenguaje : Acostumbrados a otro tipo de lenguaje mas flexible en donde la sintaxis no ocupaba un rol muy importante, con Go supimos padecer esta mala praxis.
 
 * Errores en SQL : no sabiamos que errores tiraba psql pq decia que el error estaba "cerca" o a veces no era ni lo q marcaba. Solucion : comando cat var/log/postgres/postgresql-12-main.log que nos daba un historial de errores en donde los detallaba mas
 
@@ -17,7 +26,7 @@ En el curso de la resolucion del trabajo practico nos encontramos con varias dif
 * Triggers : se nos resulto complejo comprender el uso adecuado del Before y After en cada situacion, ademas de que en un principio no comprendiamos del todo como funcionaba  pero revisando las clases y la documentacion pudimos entenderlo un poco mejor
 
 
-Como desicion de diseño importante en cuanto al codigo, viendo que este se hacia muy extenso, fue que se decidio separalo en varios archivos .sql y  en el archivo .go solo los ejecutabamos. 
+Como desicion de diseño importante en cuanto al codigo, viendo que este se hacia muy extenso, fue que se decidio separalo en varios archivos .sql y  en el archivo .go solo los ejecutabamos.
 
 
 DESCRIPCION GENERAL :
@@ -25,9 +34,303 @@ DESCRIPCION GENERAL :
 
 == Implementación
 
-Para cargar la base de datos y sus tablas guardamos los comandos necesarios para esto en archivos .sql y que son ejecutados mediante un funcion de go llamada "crearBase()" y "cargaDatos()".  
+Al ejecutar el programa, se carga un menu con diferentes opciones para que el usuario ejecute.
+
+ACA VA LA FOTO DEL MENU !!!!!!!!
+
+Para cargar la base de datos y sus tablas guardamos los comandos necesarios para esto en archivos .sql y que son ejecutados mediante una funcion de go llamada "crearBase()" y "cargaDatos()".
+
+
+[source, sql]
+----
+
+func crearBase() {
+	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al abrir la base de datos")
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`drop database if exists transacciones;`)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al eliminar la base si ya existia")
+	}
+
+	_, err = db.Exec(`create database transacciones;`)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Error al crear la base transacciones")
+	}
+}
+----
+[source, sql]
+----
+func cargarDatos() {
+	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=transacciones sslmode=disable")
+	if err != nil {
+		fmt.Println("Error al abrir la base de datos ya creada")
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	cargarComandosAPostgres(db, "codigo/crearTablas.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosClientes.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosComercios.sql")
+
+	cargarComandosAPostgres(db, "codigo/datosTarjetas.sql")
+
+	cargarCierre(db, 2020)
+
+	cargarComandosAPostgres(db, "codigo/datosConsumos.sql")
+}
+----
+
+Luego, como requisito para el correcto funcionamiento del algoritmo, se deben cargar las Primary Keys y Foreign Keys a traves de la funcion en go llamada "cargarPkYFK()".
+
+A continuacion, en el metodo "cargarProceduresYTriggers()" se puede observar todas las lecturas de archivos .sql que contienen cada uno de los Stored Procedures que se fijan si la compra es valida o no, y genera el resumen dependiendo de la validez de dicha compra y carga el Trigger compra. En caso contrario, el metodo carga el Trigger para el rechazo.
+
+[source, sql]
+----
+create or replace function
+    autorizacion_de_compra(nro_tarj char[], nro_comercio int, fecha date, monto float, pagado boolean)
+    returns boolean as $$
+    declare
+        aceptado boolean = true;
+        f_validez  char[];
+        f_vencimiento date;
+    begin
+		--En esta query guardamos en "f_validez" la fecha de vencimiento de la tarjeta que tiene el numero de tarjeta que se pasa por parametro.
+		select val_hasta into f_validez from tarjeta t where t.nro_tarjeta = nro_tarj;
+
+		--Transformamos el contenido de "f_validez" que es de tipo array de char a date y lo guardamos en "f_vencimiento".
+		select into f_vencimiento array_de_char_a_date(f_validez);
+
+		--Con esta condicion verificamos si la tarjeta esta suspendida o no, en caso de estarla la agregamos a la tabla de rechazos.
+		if exists (select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
+            insert into rechazo values (
+                default, nro_tarj, nro_comercio, fecha, monto, 'la tarjeta se encuentra suspendida');
+                aceptado = false;
+            return aceptado;
+        end if;
+
+		--Verificamos que exista la tarjeta y que su estado este vigente, en caso contrario la agregamos a la tabla de rechazos.
+    if not exists(
+        select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.estado = '{"v","i","g","e","n","t","e"}') then
+        insert into rechazo values (
+            default, nro_tarj, nro_comercio, fecha, monto, 'tarjeta no válida ó no vigente');
+        aceptado = false;
+        return aceptado;
+    end if;
+
+    --Verificamos que el codigo de seguridad de la tarjeta sea valido, si no la agregamos a rechazo.
+    if not exists(
+        select * from tarjeta t,consumo c
+            where t.nro_tarjeta = nro_tarj and c.codigo_seguridad = t.codigo_seguridad and nro_tarj = c.nro_tarjeta) and
+                exists (select * from consumo c2 where c2.nro_tarjeta = nro_tarj) then
+				insert into rechazo values (
+				default, nro_tarj, nro_comercio, fecha, monto, 'código de seguridad inválido');
+                    aceptado = false;
+        return aceptado;
+    end if;
+
+		--Verificamos si la tarjeta esta expirada, para agregarla a rechazo.
+    if f_vencimiento < fecha then
+        insert into rechazo values (
+            default, nro_tarj, nro_comercio, fecha, monto, 'plazo de vigencia expirado');
+        aceptado = false;
+        return aceptado;
+    end if;
+
+	  --Verificamos que no se exceda del limite de la tarjeta, si lo hace, la agregamos a la tabla de rechazos.
+    if exists (select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.limite_compra < monto ) then
+        insert into rechazo values (
+            default, nro_tarj, nro_comercio, fecha, monto, 'supera límite de tarjeta');
+        aceptado = false;
+        return aceptado;
+    end if;
+
+		--Si paso todas las condiciones previas, quiere decir que es una tarjeta valida, por lo tanto puede comprar.
+    if aceptado then
+        insert into compra values (default ,nro_tarj, nro_comercio , fecha, monto , pagado);
+    end if;
+    return aceptado;
+    end;
+$$ language plpgsql;
+
+----
+[source, sql]
+----
+create or replace function generacion_de_resumen(nro_client int ,anio int, m int) returns void as $$
+    declare
+      client record;
+      tarj  record;
+      term_tarj int;
+      cierre_actual record;
+      total float = 0;
+    	v record;
+	    num_resumen int;
+
+    begin
+
+				--Guardamos en "client" todos los datos que correspende al numero de cliente que me pasaron.
+        select * into client from cliente cl where cl.nro_cliente = nro_client;
+
+				--Guardamos en "tarj" todos los datos que correspende al numero de tarjeta que me pasaron.
+        select * into tarj from tarjeta t where t.nro_cliente = nro_client;
+
+				--Guardamos en "term_tarj" el ultimo digito del numero de la tarjeta y lo casteamos a entero.
+        term_tarj = tarj.nro_tarjeta[16]::int;
+
+				--Guardamos en "cierre_actual" todo de la tabla cierre en donde coincida la fecha que pasan por parametro y que tenga la misma terminacion.
+        select * into cierre_actual from cierre c where anio = c.año and m = c.mes and term_tarj = c.terminacion;
+
+				--Guardamos en total el la suma de montos del periodo pasado por parametro y en caso de que no haya monto a sumar, se guarda el valor 0.
+        select coalesce(sum(monto),0) into total from   compra where tarj.nro_tarjeta = nro_tarjeta and
+                                                fecha::date > cierre_actual.fecha_inicio and
+                                                fecha::date < cierre_actual.fecha_cierre;
+
+
+				--Insertamos todos los valores anteriores en la tabla cabecera
+        insert into cabecera values ( default, client.nombre, client.apellido, client.domicilio,
+        tarj.nro_tarjeta, cierre_actual.fecha_inicio, cierre_actual.fecha_cierre, cierre_actual.fecha_vto,total);
+
+				--Guardamos en num_resumen el numero del resumen de cabecera coincida con el numero de resumen de la tabla detalle del mismo mes.
+        select nro_resumen into num_resumen from cabecera where tarj.nro_tarjeta = nro_tarjeta and cierre_actual.fecha_inicio = desde;
+
+				--Recorremos las tablas compra y comercio donde coincidan las tajertas y las fechas de cierre con los parametros de la funcion e insertamos valores a la tabla detalle.
+        for v in select * from compra com,comercio comer
+				where comer.nro_comercio = com.nro_comercio and
+				com.nro_tarjeta = tarj.nro_tarjeta and
+				fecha::date > cierre_actual.fecha_inicio and
+				fecha::date < cierre_actual.fecha_cierre loop
+
+    		insert into detalle values (num_resumen, default, v.fecha::date, v.nombre, v.monto);
+
+        end loop;
+
+				--Cambiamos el valor de pagado a true cuando se le genera un resumen de la compra.
+        update compra set pagado = true where nro_tarjeta = tarj.nro_tarjeta and
+                                            fecha::date > cierre_actual.fecha_inicio and
+                                            fecha::date < cierre_actual.fecha_cierre;
+
+				--Reseteamos el numero de linea de detalle a 1.
+				ALTER SEQUENCE detalle_nro_linea_seq RESTART WITH 1;
+    end;
+$$ language plpgsql;
+
+----
+[source, sql]
+----
+create or replace function crear_alerta()  returns trigger as $$
+    declare
+        mismo_dia  interval := interval '1 day';
+        cant_rechazo int;
+    begin
+				--Insertamos automaticamente a la tabla alerta, con los datos de la tarjeta, la fecha, el codigo de alert y el motivo del rechazo.
+        insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 0, new.motivo);
+
+				--Contamos cuantos veces se rechazo a la misma tarjeta por superar el limite de compra.
+				select count(*) into cant_rechazo from rechazo where nro_tarjeta = new.nro_tarjeta and fecha - new.fecha < mismo_dia and new.motivo = 'supera límite de tarjeta';
+
+				--En caso tenga mas de un rechazo por superar el limite de compra, cambiamos el estado de la tarjeta a suspendida.
+				if (cant_rechazo > 1) then
+            insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 32,'Tarjeta suspendida por varios excesos de limite');
+            update tarjeta set estado = '{"s","u","s","p","e","n","d","i","d","a"}' where nro_tarjeta = new.nro_tarjeta;
+        end if;
+        return new;
+    end;
+$$ language plpgsql;
+
+--Se crea el Trigger y se ejecuta despues de que se genere un rechazo.
+create trigger alerta_automatica_trg
+after insert on rechazo
+for each row
+execute procedure crear_alerta();
+----
+[source, sql]
+----
+create or replace function crear_alerta_compras()  returns trigger as $$
+    declare
+        tiempo_compra  interval := interval '1' minute;
+        tiempo_compraCinco  interval := interval '5' minute;
+        cant_compras_un_min int;
+        cant_compras_cinco_min int;
+        cp text;
+
+    begin
+
+				--Guardamos en "cp" el codigo postal del comercio donde se realizo la compra.
+        select cod_postal into cp from comercio where nro_comercio = new.nro_comercio;
+
+				--Contamos la cantidad de codigos postales y la guardamos en "cant_compras_un_min" en donde se hicieron compras en distintos comercios en menos de un minuto.
+        select count (cod_postal) into cant_compras_un_min from comercio where nro_comercio in
+            (select distinct nro_comercio from compra c where c.nro_tarjeta = new.nro_tarjeta and
+                                                            c.fecha - new.fecha < tiempo_compra );
+
+				--Contamos la cantidad de distintos codigos postales que se hayan guardado en "cant_compras_cinco_min", ya que contiene todas las compras que se realizaron en distintos comercios en menos de 5 minutos.
+        select count (distinct cod_postal) into cant_compras_cinco_min from comercio where nro_comercio in
+            (select distinct nro_comercio from compra c where c.nro_tarjeta = new.nro_tarjeta and
+                                                            c.fecha - new.fecha < tiempo_compraCinco);
+
+
+
+				--Si hay mas de una compra realizada en menos de 5 minuto en distintos comercios con distintos codigos postales, creamos una nueva alerta.
+				if (cant_compras_cinco_min > 1) then
+            insert into alerta values(default, new.nro_tarjeta, new.fecha , null , 5,'Se detectaron mas de 1 compra en 5 minutos');
+            return new;
+        end if;
+
+				--Si hay mas de una compra realizada en menos de 1 minuto en distintos comercios, creamos una nueva alerta.
+        if cant_compras_un_min > 1 then
+            insert into alerta values(default, new.nro_tarjeta, new.fecha , null , 1,'Se detectaron mas de 1 compra en 1 minuto');
+            return new;
+
+        end if ;
+
+
+        return new;
+
+    end;
+$$ language plpgsql;
+
+--Creamos el Trigger y se ejecuta despues de insertar cada compra.
+create trigger alerta_automatica_compras_trg
+after insert on compra
+for each row
+execute procedure crear_alerta_compras();
+
+----
+
+Para verificar el correcto funcionamiento de la base, se llama a la funcion "testearBaseConConsumo()" el cual realiza varios consumos con diferentes casos, los cuales van rellenando las tablas "Alerta", "Rechazo", "Compra", entre otras que hasta el momento estaban vacias.
+
+Casi finalizando se creo la funcion "borrarKeys()" la cual, como su nombre lo indica, borra las Primary Keys y Foreign Keys que deja a nuestro algoritmo expuesto a todo tipo de fallas.
+
+Por utlimo, nuestro algoritmo tiene una funcion en donde se cargan en una base de datos NoSQL ( BoltDB ) basada en JSON una cantidad reducida de los datos que guardamos en los Structs.
 
 
 En esta sección se incluye el código fuente correctamente formateado—y
 comentado, si corresponde.
+
+Además, por cada fragmento de código
+relevante—i.e. función, método, procedimiento—se debe dar una
+breve descripción, decir qué hace, y especificar los parámetros que
+toma la función/método/procedimiento, junto con los valores que devuelve
+ó modifica.
+
+No debería incluirse el código de librerías/frameworks que se
+utilicen—a no ser que sea absolutamente necesario.
+
+== Conclusiones
+
+Aquí van algunas reflexiones acerca del proceso de desarrollo del
+trabajo realizado, y de los resultados obtenidos.
+
+También se puede incluir una conclusión final de producto terminado.
+
+Pueden incluirse lecciones aprendidas durante el desarrollo del trabajo.
+
 
