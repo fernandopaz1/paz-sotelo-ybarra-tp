@@ -2,6 +2,7 @@
 
 Flavio Ybarra <flavio_712@hotmail.com>; Ignacio Sotelo <nachosotelo9@gmail.com>; Fernando Paz <ferpaz9292@gmail.com>
 v1, {docdate}. Docentes Hernan Rondelli y Hernan Czemerinski (COM-01)
+
 :title-page:
 :numbered:
 :source-highlighter: coderay
@@ -36,8 +37,6 @@ DESCRIPCION GENERAL :
 == Implementación
 
 Al ejecutar el programa, se carga un menu con diferentes opciones para que el usuario ejecute.
-
-ACA VA LA FOTO DEL MENU !!!!!!!!
 
 === Codigo fuente en Go
 
@@ -514,14 +513,13 @@ func stringATime(str string) (t time.Time) {
 	}
 	return t
 }
-
-=== Codigo fuente en PSQL
-
 .
 .
 .
 ----
 
+
+=== Codigo fuente en PSQL
 [source, c]
 ----
 create or replace function 
@@ -951,7 +949,12 @@ alter table alerta drop constraint alerta_pk;
 .
 ----
 
-== Conclusion
+== Conclusion 
+
+Tras realizar el trabajo practico, mas alĺa de lograr el objetivo, aprendimos a manejar una base de datos con un  lenguaje nuevo como Go y las dificultades que esto puede generar. Al ser un nuevo lenguaje este tiene una sintaxis a la cual ninguno de nosotros estaba acostumbrado. Se tuvo que aprender durante la marcha demorando el desarrollo del tp. 
+Tuvimos discusiones de diseño en cuanto al realizar las funciones totalmente el Go o dividirla en codigo de PostgreSQL. Tras debatir llegamos a un acuerdo, crear archivos que contienen comandos de SQL que son ejecutados por el codigo de Go.
+En cuanto a la implementacion de BoltDB, al utilizar Go, nos parecio de mas facil acceso para ingresar y leer datos pero nos da una sensacion de poco confiabilidad comparado con bases de datos SQL, ya que pudimos acceder al codigo de la base usando el comando CAT o VIM. Otra diferencia que encontramos es que en la bases de datos PostgreSQL podemos ver un mejor orden de las datos en comparacion a BoltDB
+    
 
 
 
