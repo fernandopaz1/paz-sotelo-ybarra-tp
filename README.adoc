@@ -1,6 +1,7 @@
 = Base de Datos : Trabajo Práctico
-Cristina_Fernández_de_Kirchner <cfk@gmail.com>; Nestor_Kirchner <nestor@gmail.com>
-v1, {docdate}. Docentes Eva Perón y Juan Perón (COM-08)
+
+Flavio Ybarra <flavio_712@hotmail.com>; Ignacio Sotelo <nachosotelo9@gmail.com>; Fernando Paz <ferpaz9292@gmail.com>
+v1, {docdate}. Docentes Hernan Rondelli y Hernan Czemerinski (COM-01)
 :title-page:
 :numbered:
 :source-highlighter: coderay
@@ -38,6 +39,7 @@ Al ejecutar el programa, se carga un menu con diferentes opciones para que el us
 
 ACA VA LA FOTO DEL MENU !!!!!!!!
 
+=== Codigo fuente en Go
 
 [source, c]
 ----
@@ -512,4 +514,447 @@ func stringATime(str string) (t time.Time) {
 	}
 	return t
 }
+
+=== Codigo fuente en PSQL
+
+.
+.
+.
 ----
+
+[source, c]
+----
+create or replace function 
+    autorizacion_de_compra(nro_tarj char[], nro_comercio int, fecha date, monto float, pagado boolean)  
+    returns boolean as $$
+    declare
+        aceptado boolean = true;
+        f_validez  char[];
+        f_vencimiento date;
+    begin
+		
+		select val_hasta into f_validez from tarjeta t where t.nro_tarjeta = nro_tarj;
+        select into f_vencimiento array_de_char_a_date(f_validez);
+        
+		if exists (select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.estado = '{"s","u","s","p","e","n","d","i","d","a"}') then
+            insert into rechazo values (
+                default, nro_tarj, nro_comercio, fecha, monto, 'la tarjeta se encuentra suspendida');
+                aceptado = false;
+            return aceptado;
+        end if;
+        
+        if not exists(
+            select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.estado = '{"v","i","g","e","n","t","e"}') then
+            insert into rechazo values (
+                default, nro_tarj, nro_comercio, fecha, monto, 'tarjeta no válida ó no vigente');
+            aceptado = false;
+            return aceptado;
+        end if;
+				
+        
+        if not exists(
+            select * from tarjeta t,consumo c
+                where t.nro_tarjeta = nro_tarj and c.codigo_seguridad = t.codigo_seguridad and nro_tarj = c.nro_tarjeta) and
+                    exists (select * from consumo c2 where c2.nro_tarjeta = nro_tarj) then
+						insert into rechazo values (
+						default, nro_tarj, nro_comercio, fecha, monto, 'código de seguridad inválido');
+                        aceptado = false;
+            return aceptado;
+        end if;
+        
+        if f_vencimiento < fecha then
+            insert into rechazo values (
+                default, nro_tarj, nro_comercio, fecha, monto, 'plazo de vigencia expirado');
+            aceptado = false;
+            return aceptado;
+        end if;
+        
+        if exists (select * from tarjeta t where t.nro_tarjeta = nro_tarj and t.limite_compra < monto ) then
+            insert into rechazo values (
+                default, nro_tarj, nro_comercio, fecha, monto, 'supera límite de tarjeta');
+            aceptado = false;
+            return aceptado;
+        end if;      
+
+        if aceptado then
+            insert into compra values (default ,nro_tarj, nro_comercio , fecha, monto , pagado);
+        end if;
+    return aceptado;
+    end; 
+$$ language plpgsql;
+----
+.
+.
+.
+----
+En esta funcion comprobamos si las tarjetas estan suspendidas, que las tarjetan existan y su estado sea vigente, que el codigo de seguridad de la tarjeta sea valido, si la tarjeta esta expirada y si excede el limite de compra. Si paso todas las condiciones previas quiere decir que es una tarjeta valida por lo tanto puede comprar sino se agrega a la tabla rechazo.
+
+[source, c]
+----
+create or replace function generacion_de_resumen(nro_client int ,anio int, m int) returns void as $$
+    declare
+        client record;
+        tarj  record;
+        term_tarj int;
+        cierre_actual record;
+        total float = 0;
+	    v record;
+	    num_resumen int;
+        
+    begin
+    
+        select * into client from cliente cl where cl.nro_cliente = nro_client;
+        
+        select * into tarj from tarjeta t where t.nro_cliente = nro_client;
+        
+        term_tarj = tarj.nro_tarjeta[16]::int;
+        
+        select * into cierre_actual from cierre c where anio = c.año and m = c.mes and term_tarj = c.terminacion;
+        
+        select coalesce(sum(monto),0) into total from   compra where tarj.nro_tarjeta = nro_tarjeta and
+                                                fecha::date > cierre_actual.fecha_inicio and
+                                                fecha::date < cierre_actual.fecha_cierre;
+
+
+        insert into cabecera values ( default, client.nombre, client.apellido, client.domicilio,
+        tarj.nro_tarjeta, cierre_actual.fecha_inicio, cierre_actual.fecha_cierre, cierre_actual.fecha_vto,total);
+        
+        select nro_resumen into num_resumen from cabecera where tarj.nro_tarjeta = nro_tarjeta and cierre_actual.fecha_inicio = desde;
+        
+        for v in select * from compra com,comercio comer where comer.nro_comercio = com.nro_comercio and
+                    com.nro_tarjeta = tarj.nro_tarjeta and
+                                            fecha::date > cierre_actual.fecha_inicio and
+                                            fecha::date < cierre_actual.fecha_cierre loop
+        
+            insert into detalle values (num_resumen, default, v.fecha::date, v.nombre, v.monto);
+
+        end loop;
+        
+        update compra set pagado = true where nro_tarjeta = tarj.nro_tarjeta and
+                                            fecha::date > cierre_actual.fecha_inicio and
+                                            fecha::date < cierre_actual.fecha_cierre;	
+            
+        ALTER SEQUENCE detalle_nro_linea_seq RESTART WITH 1;
+    end; 
+$$ language plpgsql;
+.
+.
+.
+----
+A través de multiples querys obtenemos los valores necesarios para completar las tablas cabecera y detalle 
+para generar el resumen de una compra.
+
+[source, c]
+----
+create or replace function crear_alerta_compras()  returns trigger as $$
+	declare
+		tiempo_compra  interval := interval '1' minute;
+		tiempo_compraCinco  interval := interval '5' minute;
+		cant_compras_un_min int;
+		cant_compras_cinco_min int;
+		cp text;
+		
+	begin
+		
+		select cod_postal into cp from comercio where nro_comercio = new.nro_comercio;
+		
+		
+		select count (cod_postal) into cant_compras_un_min from comercio where nro_comercio in 
+			(select distinct nro_comercio from compra c where c.nro_tarjeta = new.nro_tarjeta and 
+															c.fecha - new.fecha < tiempo_compra );
+
+		
+		select count (distinct cod_postal) into cant_compras_cinco_min from comercio where nro_comercio in 
+			(select distinct nro_comercio from compra c where c.nro_tarjeta = new.nro_tarjeta and
+															c.fecha - new.fecha < tiempo_compraCinco);
+
+		
+		
+		if (cant_compras_cinco_min > 1) then
+			insert into alerta values(default, new.nro_tarjeta, new.fecha , null , 5,'Se detectaron mas de 1 compra en 5 minutos');			
+			return new;
+		end if;  	
+		
+		if cant_compras_un_min > 1 then
+			insert into alerta values(default, new.nro_tarjeta, new.fecha , null , 1,'Se detectaron mas de 1 compra en 1 minuto');
+			return new;
+		
+		end if ;	
+		
+		
+		return new;
+		
+	end; 
+$$ language plpgsql;
+create trigger alerta_automatica_compras_trg
+after insert on compra
+for each row
+execute procedure crear_alerta_compras();
+.
+.
+.
+----
+En esta funcion nos fijamos los codigos postales de los comercios donde se realizaron las compras y en caso de que se realizen en distintos comercios y mismo codigo postal en menos de un minuto insertamos una alerta. Si estas compras se realizaron en distintos codigos postales en menos de cinco minutos se inserta otra alerta. 
+
+[source, c]
+----
+create or replace function crear_alerta()  returns trigger as $$
+	declare
+		mismo_dia  interval := interval '1 day';
+		cant_rechazo int;
+	begin
+		insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 0, new.motivo);
+		select count(*) into cant_rechazo from rechazo where nro_tarjeta = new.nro_tarjeta and fecha - new.fecha < mismo_dia and new.motivo = 'supera límite de tarjeta';
+		if (cant_rechazo > 1) then
+			insert into alerta values(default, new.nro_tarjeta, new.fecha , new.nro_rechazo, 32,'Tarjeta suspendida por varios excesos de limite');
+			update tarjeta set estado = '{"s","u","s","p","e","n","d","i","d","a"}' where nro_tarjeta = new.nro_tarjeta;
+		end if;
+		return new;
+	end; 
+$$ language plpgsql;
+create trigger alerta_automatica_trg
+after insert on rechazo
+for each row
+execute procedure crear_alerta();
+.
+.
+.
+----
+Este trigger se ejecuta apartir de un rechazo por lo que automaticamente insertamos una alerta y verificamos que no haya tenido mas de dos rechazos con el motivo "supera limite tarjeta", en caso de que lo tuviera, suspendemos la tarjeta y agregamos una nueva alerta que explica lo ocurrido.
+
+==== Funciones Auxiliares
+[source, c]
+----
+create or replace function array_de_char_a_date(venc char[]) returns date as $$
+    declare
+        anio int;
+        mes  int;
+        result record;
+    begin
+        anio = venc[1]::int * 1000 + venc[2]::int * 100 + venc[3]::int * 10 +venc[4]::int;
+        mes = venc[5]::int * 10 + venc[6]::int;
+        select into result format('%s-%s-%s', anio, mes, 1)::date;
+
+        raise notice 'Esta es la fecha que le paso % ', result;
+        return result;
+    end;
+$$ language plpgsql;
+
+
+create or replace function cargar_consumos_en_compra() returns void as $$
+    declare
+        v record;
+    begin
+        for v in select * from consumo loop
+            perform autorizacion_de_compra  (v.nro_tarjeta, v.nro_comercio, '2020-11-15',v.monto, 'f');
+        end loop;
+    end;
+$$ language plpgsql;
+
+
+create or replace function generar_resumenes_del_anio() returns void as $$
+    declare
+        v record;
+    begin
+        for v in select * from cliente loop
+            for m in 1..12 loop
+				perform generacion_de_resumen (v.nro_cliente,'2020',m);
+				end loop;
+        end loop;
+    end;
+$$ language plpgsql;
+.
+.
+.
+----
+
+==== Crear Tablas
+[source, c]
+----
+create table cliente (nro_cliente int ,nombre text, apellido  text, domicilio text, telefono char[]);
+create table comercio (nro_comercio int ,nombre text, domicilio text, cod_postal text, telefono char[]);
+create table tarjeta (nro_tarjeta char[] ,nro_cliente int, val_desde char[], val_hasta char[], codigo_seguridad char[], limite_compra float, estado char[]);
+create table compra (nro_operacion serial ,nro_tarjeta char[], nro_comercio int, fecha timestamp, monto float, pagado boolean);
+create table rechazo (nro_rechazo serial, nro_tarjeta char[], nro_comercio int, fecha timestamp, monto float, motivo text);
+create table cierre (año int, mes int, terminacion int, fecha_inicio date, fecha_cierre date, fecha_vto date);
+create table cabecera (nro_resumen serial, nombre text, apellido text, domicilio text, nro_tarjeta char[], desde date, hasta date, vence date, total float);
+create table detalle (nro_resumen int, nro_linea serial, fecha date, nombre_comercio text, monto float);
+create table alerta (nro_alerta serial, nro_tarjeta char[], fecha timestamp, nro_rechazo int, cod_alerta int, descripcion text);
+create table consumo (nro_tarjeta char[], codigo_seguridad char[], nro_comercio int, monto float)
+.
+.
+.
+----
+
+==== Datos Clientes
+[source, c]
+----
+insert into cliente values ('1','Fernando','Paz','Callao 345','{"1","1","3","4","5","6","8","7","6","5"}');
+insert into cliente values ('2','Manolo','Lettiere','Matheu 3942','{"1","1","4","7","5","4","4","3","6","0"}');
+insert into cliente values ('3','Carlota','Correa','San Martin 975','{"1","1","9","4","4","2","7","7","3","5"}');
+insert into cliente values ('4','Florentina','Sosa','Fonruoge 3870','{"1","1","4","6","0","2","0","6","9","6"}');
+insert into cliente values ('5','Yara','Leiva','Charcas 5128','{"1","1","4","7","7","7","7","6","3","8"}');
+insert into cliente values ('6','Cristiano','Borroni','Av Centenario 837','{"1","1","4","7","4","3","2","2","7","3"}');
+insert into cliente values ('7','Leonor','Ortiz','24 de septiembre 263','{"1","1","4","2","1","6","1","5","1","5"}');
+insert into cliente values ('8','Levina','Dellucci','Thames 550','{"1","1","4","8","5","8","0","7","6","7"}');
+insert into cliente values ('9','Salvino','Castiglione','Moreno 1785','{"1","1","4","8","8","3","5","2","9","1"}');
+insert into cliente values ('10','Franco','Cruz','Nuñez 345','{"1","1","4","5","5","4","3","5","0","0"}');
+insert into cliente values ('11','Virgilio','Angelo','Mitre 424','{"1","1","4","4","2","1","3","0","3","0"}');
+insert into cliente values ('12','Galeno','Romero','Gonzalez 461','{"1","1","4","4","3","0","8","7","9","6"}');
+insert into cliente values ('13','Rosa','Rousse','Av Centenario 743','{"1","1","4","7","4","3","8","4","9","5"}');
+insert into cliente values ('14','Agustin','Arcuri','Fotheringham 282','{"1","1","4","4","6","2","2","8","0","8"}');
+insert into cliente values ('15','Nekate','Longo','Av Besares 1170','{"1","1","4","4","2","7","8","2","6","3"}');
+insert into cliente values ('16','Ventana','Garcia','Yrigoyen 739','{"1","1","4","4","5","6","4","8","3","5"}');
+insert into cliente values ('17','Nevada','Lombardi','Boulogne Sur Mer 372','{"1","1","4","4","5","4","0","4","0","7"}');
+insert into cliente values ('18','Telma','Chavez','Av Cabildo 2370','{"1","1","4","7","8","0","5","4","1","4"}');
+insert into cliente values ('19','Augusto','Bravo','San Luis 2745','{"1","1","4","4","8","3","1","1","3","4"}');
+insert into cliente values ('20','Romano','Cocci','Calle 24 1235','{"1","1","4","4","3","0","9","2","6","1"}')
+.
+.
+.
+----
+
+==== Datos Comercios
+[source, c]
+----
+insert into comercio values ('1','Adidas','Pte peron 3221','1643','{"1","1","4","9","2","1","1","9","7","1"}');
+insert into comercio values ('2','Nike','Miraflores 2121','1643','{"1","1","4","4","5","1","8","7","6","5"}');
+insert into comercio values ('3','Mc Donals','French 231','1643','{"1","1","4","4","1","1","0","9","6","5"}');
+insert into comercio values ('4','Burger King','Av Almafuerte 436','1643','{"1","1","4","4","4","3","0","8","2","5"}');
+insert into comercio values ('5','Compumundo','Guido Spano 2534','1643','{"1","1","4","4","5","5","3","2","2","3"}');
+insert into comercio values ('6','Garbarino','Parana 3771','1642','{"1","1","4","5","5","6","3","3","6","8"}');
+insert into comercio values ('7','Musimundo','Callao 3245','1642','{"1","1","4","3","0","2","8","7","3","5"}');
+insert into comercio values ('8','Fravega','Falucho 5411','1642','{"1","1","4","1","3","4","8","6","3","0"}');
+insert into comercio values ('9','Rodo','Av Corrientes','1642','{"1","1","4","4","4","2","1","7","1","8"}');
+insert into comercio values ('10','Samsung','Callao','1642','{"1","1","4","8","3","5","1","1","6","5"}');
+insert into comercio values ('11','Freddo','Pte peron 2121','1640','{"1","1","4","1","4","1","8","0","0","1"}');
+insert into comercio values ('12','Mostaza','Ugarte 1212','1640','{"1","1","4","2","6","6","7","7","3","1"}');
+insert into comercio values ('13','Green Eat','Haiti 3367','1640','{"1","1","4","4","5","6","1","7","3","5"}');
+insert into comercio values ('14','Starbucks','Pte peron 1299','1640','{"1","1","4","4","5","2","2","5","6","3"}');
+insert into comercio values ('15','Wendy','Palpa 782','1640','{"1","1","4","3","5","6","7","7","6","9"}');
+insert into comercio values ('16','Bowen','Zelarrayan 485','1638','{"1","1","4","4","5","6","4","2","1","6"}');
+insert into comercio values ('17','Cristobal Colon','Baigorria 1513','1638','{"1","1","4","2","5","6","2","7","1","5"}');
+insert into comercio values ('18','Falabella','Pte peron 1576','1638','{"1","1","4","4","5","2","8","7","6","5"}');
+insert into comercio values ('19','Carrefour','Ugarte 3221','1638','{"1","1","4","4","1","8","6","1","3","5"}');
+insert into comercio values ('20','Etiqueta','Nazca 2356','1638','{"1","1","4","2","5","6","8","1","1","2"}')
+.
+.
+.
+----
+
+==== Datos Consumos
+[source, c]
+----
+insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','1','150.50');
+insert into consumo values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','{"9","6","8","7"}','2','150.50');
+insert into consumo values ('{"4","4","3","4","5","6","8","7","6","5","5","6","8","7","6","1"}','{"2","3","2","8"}','2','150.50');
+insert into consumo values ('{"4","4","3","4","5","6","8","7","6","5","5","6","8","7","6","1"}','{"2","3","2","8"}','7','150.50');
+insert into consumo values ('{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','{"1","1","1","1"}','3','300.00');
+insert into consumo values ('{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','{"5","6","8","7"}','3','150.50');
+insert into consumo values ('{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','{"4","4","8","2"}','3','150000.50');
+insert into consumo values ('{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','{"5","6","8","8"}','5','155.50');
+insert into consumo values ('{"5","5","0","4","5","6","8","7","6","2","2","6","2","2","6","5"}','{"2","6","8","7"}','5','155.50');
+insert into consumo values ('{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','{"4","4","8","2"}','4','150000.50');
+insert into consumo values ('{"4","5","0","4","5","6","8","3","3","5","5","6","0","7","6","0"}','{"4","7","6","6"}','4','100.50');
+.
+.
+.
+----
+
+==== Datos Tarjetas
+[source, c]
+----
+insert into tarjeta values ('{"5","1","5","4","5","6","8","7","6","5","5","6","8","7","6","5"}','1','{"2","0","1","1","0","6"}','{"2","0","2","7","0","6"}','{"9","6","8","7"}','60000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","4","2","2","5","6","8","1","6","2","5","3","8","7","6","5"}','2','{"2","0","1","2","0","2"}','{"2","0","2","8","0","2"}','{"2","4","9","2"}','70000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","5","3","4","5","6","4","7","3","3","5","6","8","5","5","1"}','3','{"2","0","1","3","0","1"}','{"2","0","2","9","0","2"}','{"4","4","8","2"}','70000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","2","3","4","4","4","8","8","6","8","5","2","2","7","1","1"}','4','{"2","0","1","4","0","2"}','{"2","0","2","2","0","1"}','{"2","6","6","3"}','80000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","3","3","2","5","9","8","9","6","3","3","6","1","7","6","2"}','5','{"2","0","1","3","0","4"}','{"2","0","2","1","0","1"}','{"2","1","6","3"}','60000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","1","5","3","5","5","8","2","6","2","5","3","8","7","6","3"}','6','{"2","0","1","2","0","6"}','{"2","0","2","4","0","6"}','{"3","1","5","5"}','40000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","9","9","4","5","6","3","7","3","5","3","6","2","3","6","5"}','7','{"2","0","1","1","0","5"}','{"2","0","2","2","0","6"}','{"8","2","5","5"}','70000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","5","2","4","5","6","8","7","6","3","5","2","8","8","8","3"}','8','{"2","0","1","0","0","2"}','{"2","0","2","4","0","8"}','{"7","2","4","7"}','60000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","3","1","4","5","7","7","7","6","5","2","6","8","4","6","4"}','9','{"2","0","1","2","0","3"}','{"2","0","2","2","0","8"}','{"9","6","3","6"}','80000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"5","5","0","4","5","6","8","7","6","2","2","6","2","2","6","5"}','10','{"2","0","1","3","0","6"}','{"2","0","2","2","0","3"}','{"2","6","8","7"}','90000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","4","3","4","5","6","8","7","6","5","5","6","8","7","6","1"}','11','{"2","0","1","4","0","2"}','{"2","0","2","2","0","3"}','{"2","3","2","8"}','90000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","7","3","4","2","6","8","6","6","5","3","6","8","2","2","5"}','12','{"2","0","1","2","0","2"}','{"2","0","2","3","0","2"}','{"4","3","8","8"}','20000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","1","0","4","4","6","2","2","6","5","5","6","8","1","1","1"}','13','{"2","0","1","1","0","1"}','{"2","0","2","3","0","2"}','{"6","4","2","4"}','50000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","9","3","2","2","6","1","7","6","1","5","6","1","7","6","9"}','14','{"2","0","1","0","0","1"}','{"2","0","2","2","0","1"}','{"6","4","3","4"}','60000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","1","4","4","5","6","1","1","6","5","2","2","8","7","6","2"}','15','{"2","0","1","1","0","6"}','{"2","0","2","1","0","1"}','{"5","6","3","4"}','80000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","4","0","4","5","6","8","7","6","5","5","6","4","4","6","5"}','16','{"2","0","1","4","0","8"}','{"2","0","2","2","0","5"}','{"4","5","5","2"}','80000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","1","3","4","5","6","8","7","6","5","5","6","8","7","6","5"}','17','{"2","0","1","3","0","8"}','{"2","0","2","3","0","5"}','{"3","6","5","2"}','90000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","4","9","7","7","6","7","7","6","5","8","8","8","7","1","2"}','18','{"2","0","1","2","0","7"}','{"2","0","2","4","0","9"}','{"1","5","6","4"}','80000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","2","3","4","5","6","7","7","7","5","5","9","8","9","6","3"}','19','{"2","0","1","5","0","7"}','{"2","0","2","5","0","7"}','{"2","6","6","7"}','60000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","5","3","4","5","6","8","5","4","5","5","6","8","1","1","1"}','20','{"2","0","1","2","0","6"}','{"2","0","2","2","0","7"}','{"3","7","8","5"}','50000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","5","0","4","5","6","8","3","3","5","5","6","0","7","6","0"}','19','{"2","0","0","8","0","6"}','{"2","0","2","0","0","1"}','{"4","7","6","6"}','40000.00','{"v","i","g","e","n","t","e"}');
+insert into tarjeta values ('{"4","0","3","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','{"2","0","0","9","0","6"}','{"2","0","1","5","0","6"}','{"5","6","8","7"}','40000.00','{"a","n","u","l","a","d","a"}');
+insert into tarjeta values ('{"4","0","5","4","1","6","1","7","6","5","2","2","8","0","6","5"}','20','{"2","0","0","9","0","6"}','{"2","0","1","5","0","6"}','{"5","6","8","8"}','40000.00','{"s","u","s","p","e","n","d","i","d","a"}')
+.
+.
+.
+----
+
+==== Foreign Keys
+[source, c]
+----
+alter table tarjeta add constraint tarjeta_fk foreign key (nro_cliente) references cliente (nro_cliente);
+alter table compra add constraint compra_nro_tarjeta_fk foreign key (nro_tarjeta) references tarjeta (nro_tarjeta);
+alter table compra add constraint compra_nro_comercio_fk foreign key (nro_comercio) references comercio (nro_comercio);
+alter table compra add constraint rechazo_nro_tarjeta_fk foreign key (nro_tarjeta) references tarjeta (nro_tarjeta);
+alter table compra add constraint rechazo_nro_comercio_fk foreign key (nro_comercio) references comercio (nro_comercio);
+alter table cabecera add constraint cabecera_fk foreign key (nro_tarjeta) references tarjeta (nro_tarjeta);
+alter table detalle add constraint detalle_fk foreign key (nro_resumen) references cabecera (nro_resumen);
+alter table alerta add constraint alerta_nro_tarjeta_fk foreign key (nro_tarjeta) references tarjeta (nro_tarjeta);
+alter table alerta add constraint alerta_nro_rechazo_fk foreign key (nro_rechazo) references rechazo (nro_rechazo)
+.
+.
+.
+----
+
+==== Primaries Keys
+[source, c]
+----
+alter table cliente add constraint cliente_pk primary key (nro_cliente);
+alter table comercio add constraint comercio_pk primary key (nro_comercio);
+alter table tarjeta add constraint tarjeta_pk primary key (nro_tarjeta);
+alter table compra add constraint compra_pk primary key (nro_operacion);
+alter table rechazo add constraint rechazo_pk primary key (nro_rechazo);
+alter table cierre add constraint cierre_pk primary key (año,mes,terminacion);
+alter table cabecera add constraint cabecera_pk primary key (nro_resumen);
+alter table detalle add constraint detalle_pk primary key (nro_resumen,nro_linea);
+alter table alerta add constraint alerta_pk primary key (nro_alerta)
+.
+.
+.
+----
+
+==== Borrar PKs y FKs
+[source, c]
+----
+alter table tarjeta drop constraint tarjeta_fk;
+alter table compra drop constraint compra_nro_tarjeta_fk;
+alter table compra drop constraint compra_nro_comercio_fk;
+alter table compra drop constraint rechazo_nro_tarjeta_fk;
+alter table compra drop constraint rechazo_nro_comercio_fk;
+alter table cabecera drop constraint cabecera_fk;
+alter table detalle drop constraint detalle_fk;
+alter table alerta drop constraint alerta_nro_tarjeta_fk;
+alter table alerta drop constraint alerta_nro_rechazo_fk;
+alter table cliente drop constraint cliente_pk;
+alter table comercio drop constraint comercio_pk;
+alter table tarjeta drop constraint tarjeta_pk;
+alter table compra drop constraint compra_pk;
+alter table rechazo drop constraint rechazo_pk;
+alter table cierre drop constraint cierre_pk;
+alter table cabecera drop constraint cabecera_pk;
+alter table detalle drop constraint detalle_pk;
+alter table alerta drop constraint alerta_pk;
+.
+.
+.
+----
+
+== Conclusion
+
+
+
+
+
